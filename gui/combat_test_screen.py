@@ -49,6 +49,425 @@ from gui.hex_grid import HexGrid
 from game.ship_ai import ShipAI, AIPersonality
 
 
+class WeaponBeamEffect:
+    """Visual effect for energy weapon beam (phasers, disruptors, etc.)"""
+    
+    def __init__(self, start_pos, end_pos, beam_components, impact_sprite, weapon_type='phaser', randomize_impact=True):
+        """
+        Initialize an energy weapon beam effect
+        
+        Args:
+            start_pos: (x, y) tuple for beam start
+            end_pos: (x, y) tuple for beam end (impact point)
+            beam_components: Dict with 'head', 'mid', 'tail' sprites
+            impact_sprite: Sprite sheet for impact animation
+            weapon_type: Type of weapon ('phaser', 'disruptor', etc.)
+            randomize_impact: If True, adds random offset to impact point
+        """
+        self.start_pos = start_pos
+        self.weapon_type = weapon_type
+        
+        # Add random variation to impact point so multiple beams don't hit same spot
+        if randomize_impact:
+            import random
+            offset_x = random.randint(-25, 25)
+            offset_y = random.randint(-25, 25)
+            self.end_pos = (end_pos[0] + offset_x, end_pos[1] + offset_y)
+        else:
+            self.end_pos = end_pos
+            
+        self.beam_components = beam_components
+        self.impact_sprite = impact_sprite
+        
+        # Get weapon-specific color for beam tinting
+        self.beam_color = self._get_beam_color()
+        
+        # Animation timing (in milliseconds)
+        self.lifetime = 0.0  # Milliseconds elapsed
+        self.beam_duration = 800.0  # How long beam stays visible (ms)
+        self.impact_duration = 600.0  # How long impact animation plays (ms)
+        self.total_duration = self.beam_duration + self.impact_duration
+        
+        # Calculate beam angle
+        dx = end_pos[0] - start_pos[0]
+        dy = end_pos[1] - start_pos[1]
+        self.angle = math.degrees(math.atan2(dy, dx))
+        self.distance = math.sqrt(dx*dx + dy*dy)
+        
+        # Impact animation - auto-detect frame count from sprite sheet
+        if impact_sprite:
+            sheet_width = impact_sprite.get_width()
+            sheet_height = impact_sprite.get_height()
+            # Assume frames are square-ish, so divide longer dimension by shorter
+            if sheet_width > sheet_height:
+                # Horizontal layout: 640x64 = 10 frames of 64x64 each
+                self.impact_frame_count = sheet_width // sheet_height
+            else:
+                # Vertical layout
+                self.impact_frame_count = sheet_height // sheet_width
+        else:
+            self.impact_frame_count = 8  # Default fallback
+            
+        self.impact_frame = 0
+        self.impact_frame_time = self.impact_duration / self.impact_frame_count
+        
+    def update(self, dt):
+        """Update effect animation
+        
+        Args:
+            dt: Delta time in milliseconds
+        """
+        self.lifetime += dt
+        
+        # Update impact frame if in impact phase
+        if self.lifetime > self.beam_duration:
+            impact_time = self.lifetime - self.beam_duration
+            self.impact_frame = int(impact_time / self.impact_frame_time)
+            if self.impact_frame >= self.impact_frame_count:
+                self.impact_frame = self.impact_frame_count - 1
+        
+        return self.lifetime < self.total_duration  # Return True if still active
+    
+    def _get_beam_color(self):
+        """Get the color for this weapon type's beam"""
+        color_map = {
+            'phaser': (255, 150, 50),      # Orange
+            'disruptor': (50, 255, 50),    # Green
+            'plasma': (100, 255, 100),     # Light green
+            'polaron': (150, 50, 255),     # Purple
+            'tetryon': (50, 150, 255)      # Blue
+        }
+        return color_map.get(self.weapon_type, (255, 150, 50))
+    
+    def draw(self, surface):
+        """Draw the energy weapon beam effect"""
+        if not self.beam_components:
+            # Fallback to simple line if no sprites loaded (use weapon-specific color)
+            pygame.draw.line(surface, self.beam_color, self.start_pos, self.end_pos, 3)
+            if self.lifetime > self.beam_duration:
+                # Simple circle for impact
+                pygame.draw.circle(surface, self.beam_color, self.end_pos, 15, 3)
+            return
+        
+        # Draw beam (during beam phase)
+        if self.lifetime < self.beam_duration:
+            self._draw_beam(surface)
+        
+        # Draw impact (during impact phase)
+        if self.lifetime > self.beam_duration and self.impact_sprite:
+            self._draw_impact(surface)
+    
+    def _draw_beam(self, surface):
+        """Draw the phaser beam using head/mid/tail components"""
+        head = self.beam_components.get('head')
+        mid = self.beam_components.get('mid')
+        tail = self.beam_components.get('tail')
+        
+        if not all([head, mid, tail]):
+            return
+        
+        # Calculate fade based on lifetime (fade out in last 200ms of beam)
+        fade_start = self.beam_duration - 200.0
+        if self.lifetime > fade_start:
+            alpha = int(255 * (1.0 - (self.lifetime - fade_start) / 200.0))
+            alpha = max(0, min(255, alpha))
+        else:
+            alpha = 255
+        
+        # Scale down beam components for a sleeker, thinner look (30% of original)
+        beam_scale = 0.3
+        scaled_head = pygame.transform.smoothscale(
+            head, 
+            (int(head.get_width() * beam_scale), int(head.get_height() * beam_scale))
+        )
+        scaled_mid = pygame.transform.smoothscale(
+            mid, 
+            (int(mid.get_width() * beam_scale), int(mid.get_height() * beam_scale))
+        )
+        scaled_tail = pygame.transform.smoothscale(
+            tail, 
+            (int(tail.get_width() * beam_scale), int(tail.get_height() * beam_scale))
+        )
+        
+        # Apply alpha to components
+        scaled_head.set_alpha(alpha)
+        scaled_mid.set_alpha(alpha)
+        scaled_tail.set_alpha(alpha)
+        
+        # Rotate sprites to match beam angle
+        rotated_head = pygame.transform.rotate(scaled_head, -self.angle)
+        rotated_mid = pygame.transform.rotate(scaled_mid, -self.angle)
+        rotated_tail = pygame.transform.rotate(scaled_tail, -self.angle)
+        
+        # Calculate positions along beam
+        # Head at start
+        head_rect = rotated_head.get_rect(center=self.start_pos)
+        surface.blit(rotated_head, head_rect)
+        
+        # Mid sections to fill distance
+        mid_width = scaled_mid.get_width()
+        num_mids = max(1, int(self.distance / (mid_width * 0.8)))  # Slight overlap for continuous beam
+        
+        for i in range(num_mids):
+            t = (i + 1) / (num_mids + 1)
+            mid_x = self.start_pos[0] + (self.end_pos[0] - self.start_pos[0]) * t
+            mid_y = self.start_pos[1] + (self.end_pos[1] - self.start_pos[1]) * t
+            mid_rect = rotated_mid.get_rect(center=(mid_x, mid_y))
+            surface.blit(rotated_mid, mid_rect)
+        
+        # Tail at end
+        tail_rect = rotated_tail.get_rect(center=self.end_pos)
+        surface.blit(rotated_tail, tail_rect)
+    
+    def _draw_impact(self, surface):
+        """Draw the impact explosion sprite"""
+        if not self.impact_sprite:
+            return
+        
+        # Get sprite sheet dimensions
+        sheet_width = self.impact_sprite.get_width()
+        sheet_height = self.impact_sprite.get_height()
+        
+        # Determine if sprite sheet is horizontal or vertical
+        is_horizontal = sheet_width > sheet_height
+        
+        if is_horizontal:
+            # Horizontal sprite sheet (frames arranged left to right)
+            frame_width = sheet_width // self.impact_frame_count
+            frame_height = sheet_height
+            current_frame = min(self.impact_frame, self.impact_frame_count - 1)
+            source_rect = pygame.Rect(current_frame * frame_width, 0, frame_width, frame_height)
+        else:
+            # Vertical sprite sheet (frames arranged top to bottom)
+            frame_width = sheet_width
+            frame_height = sheet_height // self.impact_frame_count
+            current_frame = min(self.impact_frame, self.impact_frame_count - 1)
+            source_rect = pygame.Rect(0, current_frame * frame_height, frame_width, frame_height)
+        
+        # Debug first time
+        if not hasattr(self, '_debug_printed'):
+            orientation = "horizontal" if is_horizontal else "vertical"
+            print(f"Impact sprite: {sheet_width}x{sheet_height} ({orientation}), frame {current_frame}: {source_rect}")
+            self._debug_printed = True
+        
+        # Extract just this frame using subsurface
+        try:
+            frame_image = self.impact_sprite.subsurface(source_rect).copy()
+        except ValueError as e:
+            print(f"Subsurface error: {e}, source_rect: {source_rect}")
+            # If subsurface fails, fall back to manual extraction
+            frame_image = pygame.Surface((frame_width, frame_height), pygame.SRCALPHA)
+            frame_image.blit(self.impact_sprite, (0, 0), source_rect)
+        
+        # Scale the impact to a reasonable size
+        scaled_size = (50, 50)  # Slightly smaller for better look
+        scaled_frame = pygame.transform.smoothscale(frame_image, scaled_size)
+        
+        # Draw centered on impact point
+        frame_rect = scaled_frame.get_rect(center=self.end_pos)
+        surface.blit(scaled_frame, frame_rect)
+
+
+class TorpedoProjectileEffect:
+    """Visual effect for torpedo projectile (photon, quantum, etc.)"""
+    
+    def __init__(self, start_pos, end_pos, torpedo_sprite, impact_sprite, torpedo_type='photon'):
+        """
+        Initialize a torpedo projectile effect
+        
+        Args:
+            start_pos: (x, y) tuple for launch point
+            end_pos: (x, y) tuple for impact point
+            torpedo_sprite: Sprite sheet for torpedo animation
+            impact_sprite: Sprite sheet for explosion animation
+            torpedo_type: Type of torpedo ('photon', 'quantum', etc.)
+        """
+        self.start_pos = start_pos
+        self.end_pos = end_pos
+        self.torpedo_sprite = torpedo_sprite
+        self.impact_sprite = impact_sprite
+        self.torpedo_type = torpedo_type
+        
+        # Calculate trajectory
+        dx = end_pos[0] - start_pos[0]
+        dy = end_pos[1] - start_pos[1]
+        self.angle = math.degrees(math.atan2(dy, dx))
+        self.distance = math.sqrt(dx*dx + dy*dy)
+        
+        # Animation timing (in milliseconds)
+        self.lifetime = 0.0
+        # Torpedoes travel slower than beams but still reasonably fast
+        self.travel_time = 500.0  # 0.5 seconds to reach target (fast!)
+        self.impact_duration = 800.0  # 0.8 seconds for explosion
+        self.total_duration = self.travel_time + self.impact_duration
+        
+        # Current position during flight
+        self.current_pos = list(start_pos)
+        self.has_impacted = False
+        
+        # Torpedo animation - auto-detect frame count
+        if torpedo_sprite:
+            sheet_width = torpedo_sprite.get_width()
+            sheet_height = torpedo_sprite.get_height()
+            if sheet_width > sheet_height:
+                self.torpedo_frame_count = sheet_width // sheet_height
+            else:
+                self.torpedo_frame_count = sheet_height // sheet_width
+        else:
+            self.torpedo_frame_count = 8
+            
+        self.torpedo_frame = 0
+        self.torpedo_frame_time = 100.0  # Change frame every 100ms for animation
+        
+        # Impact animation - auto-detect frame count
+        if impact_sprite:
+            sheet_width = impact_sprite.get_width()
+            sheet_height = impact_sprite.get_height()
+            if sheet_width > sheet_height:
+                self.impact_frame_count = sheet_width // sheet_height
+            else:
+                self.impact_frame_count = sheet_height // sheet_width
+        else:
+            self.impact_frame_count = 10
+            
+        self.impact_frame = 0
+        self.impact_frame_time = self.impact_duration / self.impact_frame_count
+    
+    def update(self, dt):
+        """Update torpedo animation and position
+        
+        Args:
+            dt: Delta time in milliseconds
+        """
+        self.lifetime += dt
+        
+        if self.lifetime < self.travel_time:
+            # Torpedo is traveling
+            progress = self.lifetime / self.travel_time
+            
+            # Interpolate position
+            self.current_pos[0] = self.start_pos[0] + (self.end_pos[0] - self.start_pos[0]) * progress
+            self.current_pos[1] = self.start_pos[1] + (self.end_pos[1] - self.start_pos[1]) * progress
+            
+            # Update torpedo animation frame
+            self.torpedo_frame = int(self.lifetime / self.torpedo_frame_time) % self.torpedo_frame_count
+            
+        elif not self.has_impacted:
+            # Just reached target
+            self.has_impacted = True
+            self.current_pos = list(self.end_pos)
+            
+        else:
+            # Explosion phase
+            impact_time = self.lifetime - self.travel_time
+            self.impact_frame = int(impact_time / self.impact_frame_time)
+            if self.impact_frame >= self.impact_frame_count:
+                self.impact_frame = self.impact_frame_count - 1
+        
+        return self.lifetime < self.total_duration
+    
+    def draw(self, surface):
+        """Draw the torpedo projectile or explosion"""
+        if self.lifetime < self.travel_time:
+            # Draw torpedo in flight
+            self._draw_torpedo(surface)
+        elif self.has_impacted:
+            # Draw explosion
+            self._draw_explosion(surface)
+    
+    def _draw_torpedo(self, surface):
+        """Draw the animated torpedo sprite"""
+        if not self.torpedo_sprite:
+            # Fallback: draw colored circle
+            color = self._get_torpedo_color()
+            pygame.draw.circle(surface, color, (int(self.current_pos[0]), int(self.current_pos[1])), 5)
+            return
+        
+        # Get sprite sheet dimensions
+        sheet_width = self.torpedo_sprite.get_width()
+        sheet_height = self.torpedo_sprite.get_height()
+        
+        # Determine layout
+        is_horizontal = sheet_width > sheet_height
+        
+        if is_horizontal:
+            frame_width = sheet_width // self.torpedo_frame_count
+            frame_height = sheet_height
+            source_rect = pygame.Rect(self.torpedo_frame * frame_width, 0, frame_width, frame_height)
+        else:
+            frame_width = sheet_width
+            frame_height = sheet_height // self.torpedo_frame_count
+            source_rect = pygame.Rect(0, self.torpedo_frame * frame_height, frame_width, frame_height)
+        
+        # Extract current frame
+        try:
+            frame_image = self.torpedo_sprite.subsurface(source_rect).copy()
+        except ValueError:
+            frame_image = pygame.Surface((frame_width, frame_height), pygame.SRCALPHA)
+            frame_image.blit(self.torpedo_sprite, (0, 0), source_rect)
+        
+        # Scale torpedo to reasonable size (40x40)
+        scaled_size = (40, 40)
+        scaled_frame = pygame.transform.smoothscale(frame_image, scaled_size)
+        
+        # Rotate to match trajectory angle
+        rotated_frame = pygame.transform.rotate(scaled_frame, -self.angle)
+        
+        # Draw at current position
+        frame_rect = rotated_frame.get_rect(center=(int(self.current_pos[0]), int(self.current_pos[1])))
+        surface.blit(rotated_frame, frame_rect)
+    
+    def _draw_explosion(self, surface):
+        """Draw the explosion sprite"""
+        if not self.impact_sprite:
+            # Fallback: draw expanding circle
+            color = self._get_torpedo_color()
+            radius = 10 + int((self.impact_frame / self.impact_frame_count) * 30)
+            pygame.draw.circle(surface, color, self.end_pos, radius, 3)
+            return
+        
+        # Get sprite sheet dimensions
+        sheet_width = self.impact_sprite.get_width()
+        sheet_height = self.impact_sprite.get_height()
+        
+        is_horizontal = sheet_width > sheet_height
+        
+        if is_horizontal:
+            frame_width = sheet_width // self.impact_frame_count
+            frame_height = sheet_height
+            source_rect = pygame.Rect(self.impact_frame * frame_width, 0, frame_width, frame_height)
+        else:
+            frame_width = sheet_width
+            frame_height = sheet_height // self.impact_frame_count
+            source_rect = pygame.Rect(0, self.impact_frame * frame_height, frame_width, frame_height)
+        
+        # Extract frame
+        try:
+            frame_image = self.impact_sprite.subsurface(source_rect).copy()
+        except ValueError:
+            frame_image = pygame.Surface((frame_width, frame_height), pygame.SRCALPHA)
+            frame_image.blit(self.impact_sprite, (0, 0), source_rect)
+        
+        # Scale explosion (larger than phaser hit - 70x70)
+        scaled_size = (70, 70)
+        scaled_frame = pygame.transform.smoothscale(frame_image, scaled_size)
+        
+        # Draw centered on impact point
+        frame_rect = scaled_frame.get_rect(center=self.end_pos)
+        surface.blit(scaled_frame, frame_rect)
+    
+    def _get_torpedo_color(self):
+        """Get fallback color for torpedo type"""
+        color_map = {
+            'photon': (255, 100, 100),    # Red
+            'quantum': (100, 200, 255),   # Blue
+            'plasma': (100, 255, 100),    # Green
+            'tricobalt': (255, 255, 100), # Yellow
+            'tetryon': (200, 100, 255)    # Purple
+        }
+        return color_map.get(self.torpedo_type, (255, 100, 100))
+
+
 class CombatTestScreen:
     """Combat testing arena with two Odyssey-class ships"""
     
@@ -111,6 +530,12 @@ class CombatTestScreen:
         self.animation_callback = None  # Function to call when animation completes
         self.pending_ai_moves = []  # Queue of AI moves to execute
         
+        # Weapon effects system
+        self.active_weapon_effects = []  # List of active weapon effects
+        self.phaser_beam_components = {}  # Loaded phaser beam sprites
+        self.impact_effects = {}  # Loaded impact effect sprites
+        self.torpedo_sprites = {}  # Loaded torpedo sprite sheets
+        
         # Arena dimensions (combat space) - define before UI
         self.arena_x = 50
         self.arena_y = 100
@@ -130,6 +555,9 @@ class CombatTestScreen:
         
         # Load ship sprite
         self._load_ship_sprite()
+        
+        # Load weapon effects
+        self._load_weapon_effects()
         
         # Create test ships
         self._create_test_ships()
@@ -201,7 +629,7 @@ class CombatTestScreen:
     def _load_ship_sprite(self):
         """Load the ship sprite image"""
         import os
-        sprite_path = "assets/OdysseyClass.png"
+        sprite_path = "assets/Ships/Federation/OdysseyClass.png"
         
         try:
             # Check if file exists
@@ -237,7 +665,7 @@ class CombatTestScreen:
         except Exception as e:
             print(f"⚠ Could not load OdysseyClass.png: {e}")
             print(f"  Current directory: {os.getcwd()}")
-            print("  Using placeholder. Save your image as assets/OdysseyClass.png")
+            print("  Using placeholder. Save your image as assets/Ships/Federation/OdysseyClass.png")
             
             # Create a placeholder if image not found
             sprite_size = int(self.hex_size * 1.5)
@@ -256,6 +684,49 @@ class CombatTestScreen:
                            (center - 20, center + 10, 8, 20))
             pygame.draw.rect(self.ship_sprite, LCARS_COLORS['blue'],
                            (center + 12, center + 10, 8, 20))
+    
+    def _load_weapon_effects(self):
+        """Load weapon effect sprites"""
+        import os
+        
+        try:
+            # Load phaser beam components
+            phaser_path = "assets/sfx/arrays/phaser"
+            self.phaser_beam_components = {
+                'head': pygame.image.load(os.path.join(phaser_path, "phaser_head.png")).convert_alpha(),
+                'mid': pygame.image.load(os.path.join(phaser_path, "phaser_mid.png")).convert_alpha(),
+                'tail': pygame.image.load(os.path.join(phaser_path, "phaser_tail.png")).convert_alpha()
+            }
+            print("✓ Loaded phaser beam components")
+            
+            # Load impact effect
+            impact_path = "assets/sfx/explosions"
+            self.impact_effects['phaser_hit'] = pygame.image.load(
+                os.path.join(impact_path, "phaser_hit_sheet.png")
+            ).convert_alpha()
+            print("✓ Loaded phaser impact effect")
+            
+            # Load torpedo sprite sheets
+            torpedo_path = "assets/sfx/torpedoes"
+            torpedo_types = ['photon', 'quantum', 'plasma', 'tricobalt', 'tetryon']
+            
+            for torp_type in torpedo_types:
+                try:
+                    filename = f"{torp_type}_sheet.png"
+                    self.torpedo_sprites[torp_type] = pygame.image.load(
+                        os.path.join(torpedo_path, filename)
+                    ).convert_alpha()
+                    print(f"✓ Loaded {torp_type} torpedo sprite")
+                except Exception as torp_error:
+                    print(f"⚠ Could not load {torp_type} torpedo: {torp_error}")
+            
+        except Exception as e:
+            print(f"⚠ Could not load weapon effects: {e}")
+            print(f"  Current directory: {os.getcwd()}")
+            # Create placeholder effects if needed
+            self.phaser_beam_components = {}
+            self.impact_effects = {}
+            self.torpedo_sprites = {}
             
     def _create_ui(self):
         """Create UI elements"""
@@ -910,6 +1381,25 @@ class CombatTestScreen:
                     
                 actual_damage = int(damage * accuracy_mod)
                 
+                # Create visual effect for energy weapon beam
+                if self.phaser_beam_components:
+                    # Get ship positions
+                    attacker_pos = attacker.position if attacker.position else self.hex_grid.axial_to_pixel(attacker.hex_q, attacker.hex_r)
+                    target_pos = target.position if target.position else self.hex_grid.axial_to_pixel(target.hex_q, target.hex_r)
+                    
+                    # Get weapon's visual effect type
+                    weapon_effect_type = weapon.get_visual_effect_type()
+                    
+                    # Create beam effect using weapon-specific properties
+                    beam_effect = WeaponBeamEffect(
+                        attacker_pos,
+                        target_pos,
+                        self.phaser_beam_components,
+                        self.impact_effects.get('phaser_hit'),
+                        weapon_type=weapon.weapon_type
+                    )
+                    self.active_weapon_effects.append(beam_effect)
+                
                 # Energy weapons: 100% absorbed by shields, remainder to hull
                 shield_damage = actual_damage
                 hull_damage = 0
@@ -947,6 +1437,22 @@ class CombatTestScreen:
                     continue
                 
                 damage = torpedo.fire(crew_bonus)
+                
+                # Create visual effect for torpedo
+                if self.torpedo_sprites.get(torpedo.torpedo_type):
+                    # Get ship positions
+                    attacker_pos = attacker.position if attacker.position else self.hex_grid.axial_to_pixel(attacker.hex_q, attacker.hex_r)
+                    target_pos = target.position if target.position else self.hex_grid.axial_to_pixel(target.hex_q, target.hex_r)
+                    
+                    # Create torpedo projectile effect
+                    torpedo_effect = TorpedoProjectileEffect(
+                        attacker_pos,
+                        target_pos,
+                        self.torpedo_sprites.get(torpedo.torpedo_type),
+                        self.impact_effects.get('phaser_hit'),  # Use same explosion for now
+                        torpedo_type=torpedo.torpedo_type
+                    )
+                    self.active_weapon_effects.append(torpedo_effect)
                 
                 # Apply sensor accuracy
                 accuracy_mod = attacker.get_targeting_accuracy(distance)
@@ -1110,6 +1616,12 @@ class CombatTestScreen:
                         
     def update(self, dt):
         """Update combat state"""
+        # Update weapon effects
+        self.active_weapon_effects = [
+            effect for effect in self.active_weapon_effects 
+            if effect.update(dt)
+        ]
+        
         # Update movement animations
         if self.animating_ship is not None:
             self.animation_progress += dt * self.animation_speed
@@ -1248,6 +1760,10 @@ class CombatTestScreen:
         
         # Draw targeting lines (only when targets are selected)
         self._draw_targeting_lines()
+        
+        # Draw weapon effects (beams, impacts, etc.)
+        for effect in self.active_weapon_effects:
+            effect.draw(self.screen)
         
         # Remove clipping - allow drawing outside arena for UI elements
         self.screen.set_clip(None)

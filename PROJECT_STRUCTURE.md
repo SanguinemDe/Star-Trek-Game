@@ -78,7 +78,9 @@ Star Trek Game/
 │   └── 📄 combat_test_screen.py   # Combat arena (1700+ lines!)
 │
 ├── 📁 assets/                      # Game assets
-│   └── 🖼️ OdysseyClass.png        # Ship sprite (1024x1024)
+│   └── 📁 Ships/                  # Ship sprites
+│       └── 📁 Federation/         # Federation ship sprites
+│           └── �️ OdysseyClass.png  # Odyssey-class sprite (1024x1024)
 │
 ├── 📁 _archive/                    # Archived development files
 │   ├── 📄 test_*.py               # Test scripts (obsolete)

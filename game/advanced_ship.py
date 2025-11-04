@@ -1163,6 +1163,41 @@ class WeaponArray:
         """Advance cooldown by 1 turn"""
         if self.cooldown_remaining > 0:
             self.cooldown_remaining -= 1
+    
+    def get_visual_effect_type(self):
+        """
+        Get the visual effect type for this weapon.
+        Used by GUI to determine which beam/effect sprites to use.
+        
+        Returns:
+            String identifier for visual effect ('phaser_beam', 'disruptor_beam', etc.)
+        """
+        # Map weapon types to their visual effects
+        effect_map = {
+            'phaser': 'phaser_beam',
+            'disruptor': 'disruptor_beam',  # Future: different colored beam
+            'plasma': 'plasma_beam',        # Future: green beam
+            'polaron': 'polaron_beam',      # Future: purple beam
+            'tetryon': 'tetryon_beam'       # Future: blue beam
+        }
+        return effect_map.get(self.weapon_type, 'phaser_beam')
+    
+    def get_beam_color(self):
+        """
+        Get the color tint for this weapon's beam.
+        Used by GUI for simple colored beams when custom sprites not available.
+        
+        Returns:
+            RGB tuple (r, g, b)
+        """
+        color_map = {
+            'phaser': (255, 150, 50),      # Orange
+            'disruptor': (50, 255, 50),    # Green
+            'plasma': (100, 255, 100),     # Light green
+            'polaron': (150, 50, 255),     # Purple
+            'tetryon': (50, 150, 255)      # Blue
+        }
+        return color_map.get(self.weapon_type, (255, 150, 50))
 
 
 class TorpedoBay:
@@ -1267,6 +1302,32 @@ class TorpedoBay:
             self.torpedoes = self.max_torpedoes
         else:
             self.torpedoes = min(self.max_torpedoes, self.torpedoes + amount)
+    
+    def get_visual_effect_type(self):
+        """
+        Get the visual effect type for this torpedo.
+        Used by GUI to determine which projectile sprites to use.
+        
+        Returns:
+            String identifier for visual effect ('photon_torpedo', 'quantum_torpedo', etc.)
+        """
+        return f"{self.torpedo_type}_torpedo"
+    
+    def get_projectile_sprite_sheet(self):
+        """
+        Get the sprite sheet filename for this torpedo type.
+        
+        Returns:
+            Filename of sprite sheet in assets/sfx/torpedoes/
+        """
+        sprite_map = {
+            'photon': 'photon_sheet.png',
+            'quantum': 'quantum_sheet.png',
+            'plasma': 'plasma_sheet.png',
+            'tricobalt': 'tricobalt_sheet.png',
+            'tetryon': 'tetryon_sheet.png'
+        }
+        return sprite_map.get(self.torpedo_type, 'photon_sheet.png')
 
 
 class CommandOfficer:

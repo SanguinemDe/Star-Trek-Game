@@ -129,7 +129,9 @@ Star Trek Game/
 │   ├── convert_*.py           # Conversion utilities
 │   └── *_SUMMARY.md           # Historical docs
 ├── assets/                     # Game assets
-│   └── OdysseyClass.png       # Ship sprite
+│   └── Ships/                 # Ship sprites
+│       └── Federation/        # Federation ship sprites
+│           └── OdysseyClass.png  # Odyssey-class sprite
 ├── game/                       # Game logic
 │   ├── advanced_ship.py       # Ship system - DOCUMENTED
 │   ├── ship_ai.py            # AI controller - DOCUMENTED
