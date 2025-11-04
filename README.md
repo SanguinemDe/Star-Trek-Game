@@ -90,7 +90,7 @@ Build your bridge crew with specialized officers for enhanced ship performance:
 - Prime Directive considerations
 
 ### 🛸 Ship Systems
-- **24 Canonical Federation Ships**: Miranda, Constitution, Excelsior, Intrepid, Defiant, Galaxy, Sovereign, Prometheus, Odyssey, Enterprise-J, and many more!
+- **64 Canonical Federation Ships**: Miranda, Constitution, Excelsior, Intrepid, Defiant, Galaxy, Sovereign, Prometheus, Odyssey, Enterprise-J, and many more!
 - **Progression System**: Start in a Miranda-class and work your way up through rank and reputation
 - **Ship Requirements**: Each vessel has rank and reputation requirements (Enterprise-J needs Admiral rank!)
 - Hull integrity and shield management
