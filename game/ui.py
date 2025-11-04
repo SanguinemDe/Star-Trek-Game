@@ -3,6 +3,7 @@ User Interface System
 """
 
 import os
+from game.ships.federation import get_federation_ships_by_rank
 
 class UI:
     """Handles all user interface and display"""
@@ -284,7 +285,36 @@ class UI:
         print(f"Your Reputation: {character.reputation} points")
         print(f"Current Ship: {current_ship_class}-class")
         
-        available_ships = Ship.get_available_ships(character)
+        # Get available ships using the new federation catalogue system
+        raw_ships = get_federation_ships_by_rank(
+            min_rank=0, 
+            max_rank=character.rank_level,
+            player_reputation=character.reputation
+        )
+        
+        # Convert to old format for compatibility with existing display code
+        available_ships = []
+        for ship in raw_ships:
+            # Estimate shield and weapon values (not directly available from new system)
+            shields_estimate = int(ship['hull'] * 0.6)  # Shields are typically ~60% of hull
+            weapons_estimate = 5 + (ship['minimum_rank'] * 2)  # Scale weapons with rank
+            
+            ship_data = {
+                'class': ship['class'],
+                'can_afford': ship['reputation_cost'] <= character.reputation,
+                'specs': {
+                    'min_rank': ship['minimum_rank'],
+                    'reputation_cost': ship['reputation_cost'],
+                    'type': ship['type'],
+                    'hull': ship['hull'],
+                    'shields': shields_estimate,
+                    'armor': 0,  # Default armor
+                    'weapons': weapons_estimate,
+                    'warp': ship['warp'],
+                    'crew_capacity': ship['crew']
+                }
+            }
+            available_ships.append(ship_data)
         
         if not available_ships:
             print("\nNo ships available.")
