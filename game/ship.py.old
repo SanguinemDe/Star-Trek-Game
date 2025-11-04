@@ -1,0 +1,1596 @@
+"""
+Ship Management System
+"""
+
+import random
+
+class Ship:
+    """Represents the player's starship"""
+    
+    # Comprehensive list of canonical Federation starships (22nd-25th centuries)
+    # Organized by rank progression (min_rank: 0-8)
+    # Format: type, hull, shields, power, weapons, sensors, warp, crew_capacity, reputation_cost, min_rank, era, description
+    SHIP_CLASSES = {
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 0: LIEUTENANT COMMANDER - Starting Ships (0-100 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Daedalus': {
+            'type': 'Survey Vessel',
+            'hull': 60,
+            'shields': 40,
+            'armor': 10,
+            'power': 70,
+            'weapons': 30,
+            'sensors': 60,
+            'warp': 4.0,
+            'crew_capacity': 200,
+            'reputation_cost': 0,
+            'min_rank': 0,
+            'era': '22nd Century',
+            'description': 'Early Starfleet vessel, spherical primary hull design'
+        },
+        'Miranda': {
+            'type': 'Light Cruiser',
+            'hull': 100,
+            'shields': 80,
+            'armor': 20,
+            'power': 100,
+            'weapons': 60,
+            'sensors': 70,
+            'warp': 8.0,
+            'crew_capacity': 220,
+            'reputation_cost': 0,
+            'min_rank': 0,
+            'era': '23rd Century',
+            'description': 'Reliable workhorse of Starfleet, perfect for new captains'
+        },
+        'Oberth': {
+            'type': 'Science Vessel',
+            'hull': 70,
+            'shields': 60,
+            'armor': 10,
+            'power': 80,
+            'weapons': 40,
+            'sensors': 100,
+            'warp': 7.0,
+            'crew_capacity': 80,
+            'reputation_cost': 100,
+            'min_rank': 0,
+            'era': '23rd Century',
+            'description': 'Dedicated science vessel, fragile but excellent sensors'
+        },
+        'Sydney': {
+            'type': 'Transport',
+            'hull': 75,
+            'shields': 65,
+            'armor': 15,
+            'power': 85,
+            'weapons': 35,
+            'sensors': 65,
+            'warp': 7.5,
+            'crew_capacity': 150,
+            'reputation_cost': 50,
+            'min_rank': 0,
+            'era': '23rd Century',
+            'description': 'Dedicated transport and shuttle carrier'
+        },
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 1: LIEUTENANT COMMANDER - Early Career (200-300 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Ptolemy': {
+
+            'type': 'Tug/Transport',
+            'hull': 85,
+            'shields': 70,
+            'armor': 8,
+            'power': 110,
+            'weapons': 40,
+            'sensors': 65,
+            'warp': 7.0,
+            'crew_capacity': 200,
+            'reputation_cost': 250,
+            'min_rank': 1,
+            'era': '23rd Century',
+            'description': 'Heavy tug and transport, cargo specialist'
+        
+        },
+        'Soyuz': {
+
+            'type': 'Frigate',
+            'hull': 95,
+            'shields': 85,
+            'armor': 11,
+            'power': 95,
+            'weapons': 65,
+            'sensors': 70,
+            'warp': 8.0,
+            'crew_capacity': 220,
+            'reputation_cost': 200,
+            'min_rank': 1,
+            'era': '23rd Century',
+            'description': 'Miranda variant with sensor pods, border patrol duties'
+        
+        },
+        'Constitution': {
+
+            'type': 'Heavy Cruiser',
+            'hull': 120,
+            'shields': 100,
+            'armor': 14,
+            'power': 120,
+            'weapons': 80,
+            'sensors': 90,
+            'warp': 8.0,
+            'crew_capacity': 430,
+            'reputation_cost': 300,
+            'min_rank': 1,
+            'era': '23rd Century',
+            'description': 'Legendary starship class, balanced and reliable'
+        
+        },
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 2: COMMANDER - Exploration Era (350-600 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Hermes': {
+
+            'type': 'Scout',
+            'hull': 80,
+            'shields': 75,
+            'armor': 7,
+            'power': 90,
+            'weapons': 50,
+            'sensors': 95,
+            'warp': 8.0,
+            'crew_capacity': 220,
+            'reputation_cost': 350,
+            'min_rank': 2,
+            'era': '23rd Century',
+            'description': 'Fast scout vessel, excellent for reconnaissance'
+        
+        },
+        'Saladin': {
+
+            'type': 'Destroyer',
+            'hull': 90,
+            'shields': 90,
+            'armor': 14,
+            'power': 100,
+            'weapons': 75,
+            'sensors': 75,
+            'warp': 8.0,
+            'crew_capacity': 200,
+            'reputation_cost': 400,
+            'min_rank': 2,
+            'era': '23rd Century',
+            'description': 'Single-nacelle destroyer, compact and efficient'
+        
+        },
+        'Constellation': {
+
+            'type': 'Star Cruiser',
+            'hull': 130,
+            'shields': 105,
+            'armor': 15,
+            'power': 125,
+            'weapons': 85,
+            'sensors': 85,
+            'warp': 8.5,
+            'crew_capacity': 535,
+            'reputation_cost': 500,
+            'min_rank': 2,
+            'era': '23rd Century',
+            'description': 'Four-nacelle design, reliable deep space cruiser'
+        
+        },
+        'Antares': {
+
+            'type': 'Freighter',
+            'hull': 90,
+            'shields': 75,
+            'armor': 13,
+            'power': 100,
+            'weapons': 40,
+            'sensors': 70,
+            'warp': 8.0,
+            'crew_capacity': 200,
+            'reputation_cost': 600,
+            'min_rank': 2,
+            'era': '24th Century',
+            'description': 'Cargo freighter, minimal combat capability'
+        
+        },
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 3: COMMANDER - TNG Era (600-1100 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Constitution Refit': {
+
+            'type': 'Heavy Cruiser',
+            'hull': 140,
+            'shields': 110,
+            'armor': 21,
+            'power': 130,
+            'weapons': 90,
+            'sensors': 95,
+            'warp': 8.5,
+            'crew_capacity': 430,
+            'reputation_cost': 600,
+            'min_rank': 3,
+            'era': 'TOS Movies',
+            'description': 'Upgraded Constitution, improved systems across the board'
+        
+        },
+        'Excelsior': {
+
+            'type': 'Heavy Cruiser',
+            'hull': 150,
+            'shields': 120,
+            'armor': 22,
+            'power': 140,
+            'weapons': 90,
+            'sensors': 80,
+            'warp': 9.0,
+            'crew_capacity': 750,
+            'reputation_cost': 800,
+            'min_rank': 3,
+            'era': 'TOS Movies',
+            'description': 'Transwarp development project, fast and powerful'
+        
+        },
+        'Ambassador': {
+
+            'type': 'Heavy Cruiser',
+            'hull': 160,
+            'shields': 130,
+            'armor': 24,
+            'power': 150,
+            'weapons': 95,
+            'sensors': 90,
+            'warp': 9.3,
+            'crew_capacity': 700,
+            'reputation_cost': 1000,
+            'min_rank': 3,
+            'era': '24th Century',
+            'description': 'Bridge between Excelsior and Galaxy classes'
+        
+        },
+        'Springfield': {
+
+            'type': 'Frigate',
+            'hull': 105,
+            'shields': 100,
+            'armor': 15,
+            'power': 105,
+            'weapons': 85,
+            'sensors': 80,
+            'warp': 9.2,
+            'crew_capacity': 150,
+            'reputation_cost': 850,
+            'min_rank': 3,
+            'era': '24th Century',
+            'description': 'Compact frigate, Nebula-inspired design'
+        
+        },
+        'Cheyenne': {
+
+            'type': 'Light Cruiser',
+            'hull': 120,
+            'shields': 115,
+            'armor': 18,
+            'power': 120,
+            'weapons': 90,
+            'sensors': 85,
+            'warp': 9.3,
+            'crew_capacity': 300,
+            'reputation_cost': 900,
+            'min_rank': 3,
+            'era': '24th Century',
+            'description': 'Four-nacelle cruiser, solid mid-range vessel'
+        
+        },
+        'Challenger': {
+
+            'type': 'Cruiser',
+            'hull': 125,
+            'shields': 115,
+            'armor': 18,
+            'power': 125,
+            'weapons': 95,
+            'sensors': 85,
+            'warp': 9.3,
+            'crew_capacity': 350,
+            'reputation_cost': 950,
+            'min_rank': 3,
+            'era': '24th Century',
+            'description': 'Versatile cruiser for various mission profiles'
+        
+        },
+        'New Orleans': {
+
+            'type': 'Frigate',
+            'hull': 115,
+            'shields': 110,
+            'armor': 17,
+            'power': 115,
+            'weapons': 90,
+            'sensors': 90,
+            'warp': 9.3,
+            'crew_capacity': 330,
+            'reputation_cost': 920,
+            'min_rank': 3,
+            'era': '24th Century',
+            'description': 'Galaxy-inspired frigate with sensor pod'
+        
+        },
+        'Niagara': {
+
+            'type': 'Fast Cruiser',
+            'hull': 130,
+            'shields': 120,
+            'armor': 19,
+            'power': 130,
+            'weapons': 95,
+            'sensors': 90,
+            'warp': 9.4,
+            'crew_capacity': 400,
+            'reputation_cost': 1100,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Three-nacelle fast cruiser, excellent speed'
+        
+        },
+        'Freedom': {
+
+            'type': 'Escort',
+            'hull': 95,
+            'shields': 95,
+            'armor': 18,
+            'power': 100,
+            'weapons': 85,
+            'sensors': 75,
+            'warp': 9.2,
+            'crew_capacity': 100,
+            'reputation_cost': 750,
+            'min_rank': 3,
+            'era': '24th Century',
+            'description': 'Single-nacelle escort, economical design'
+        
+        },
+        'Nova': {
+
+            'type': 'Science Vessel',
+            'hull': 85,
+            'shields': 85,
+            'armor': 8,
+            'power': 100,
+            'weapons': 55,
+            'sensors': 115,
+            'warp': 9.0,
+            'crew_capacity': 80,
+            'reputation_cost': 900,
+            'min_rank': 3,
+            'era': '24th Century',
+            'description': 'Compact science vessel, excellent for planetary surveys'
+        
+        },
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 4: CAPTAIN - Dominion War Era (1000-1700 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Olympic': {
+
+            'type': 'Medical Ship',
+            'hull': 110,
+            'shields': 100,
+            'armor': 16,
+            'power': 120,
+            'weapons': 30,
+            'sensors': 110,
+            'warp': 9.3,
+            'crew_capacity': 350,
+            'reputation_cost': 1000,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Hospital ship, minimal weapons but excellent medical facilities'
+        
+        },
+        'Yeager': {
+
+            'type': 'Light Cruiser',
+            'hull': 100,
+            'shields': 95,
+            'armor': 15,
+            'power': 105,
+            'weapons': 90,
+            'sensors': 85,
+            'warp': 9.2,
+            'crew_capacity': 175,
+            'reputation_cost': 1100,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Intrepid-Maquis hybrid design, efficient combatant'
+        
+        },
+        'Niagara': {
+
+            'type': 'Fast Cruiser',
+            'hull': 130,
+            'shields': 120,
+            'armor': 19,
+            'power': 130,
+            'weapons': 95,
+            'sensors': 90,
+            'warp': 9.4,
+            'crew_capacity': 400,
+            'reputation_cost': 1100,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Three-nacelle fast cruiser, excellent speed'
+        
+        },
+        'Saber': {
+
+            'type': 'Light Escort',
+            'hull': 90,
+            'shields': 90,
+            'armor': 17,
+            'power': 100,
+            'weapons': 85,
+            'sensors': 75,
+            'warp': 9.2,
+            'crew_capacity': 40,
+            'reputation_cost': 1200,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Compact combat vessel, quick and maneuverable'
+        
+        },
+        'Bradbury': {
+
+            'type': 'Survey Ship',
+            'hull': 100,
+            'shields': 95,
+            'armor': 10,
+            'power': 110,
+            'weapons': 60,
+            'sensors': 115,
+            'warp': 9.2,
+            'crew_capacity': 200,
+            'reputation_cost': 1200,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Dedicated survey vessel, excellent for exploration'
+        
+        },
+        'Renaissance': {
+
+            'type': 'Cruiser',
+            'hull': 135,
+            'shields': 125,
+            'armor': 20,
+            'power': 135,
+            'weapons': 100,
+            'sensors': 90,
+            'warp': 9.4,
+            'crew_capacity': 420,
+            'reputation_cost': 1300,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Advanced cruiser design, balanced capabilities'
+        
+        },
+        'Steamrunner': {
+
+            'type': 'Frigate',
+            'hull': 110,
+            'shields': 105,
+            'armor': 16,
+            'power': 110,
+            'weapons': 95,
+            'sensors': 80,
+            'warp': 9.3,
+            'crew_capacity': 200,
+            'reputation_cost': 1300,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Fast attack frigate, designed for fleet actions'
+        
+        },
+        'Norway': {
+
+            'type': 'Frigate',
+            'hull': 115,
+            'shields': 110,
+            'armor': 17,
+            'power': 115,
+            'weapons': 100,
+            'sensors': 85,
+            'warp': 9.3,
+            'crew_capacity': 190,
+            'reputation_cost': 1350,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Well-rounded combat frigate'
+        
+        },
+        'Nebula': {
+
+            'type': 'Science Cruiser',
+            'hull': 180,
+            'shields': 140,
+            'armor': 18,
+            'power': 160,
+            'weapons': 90,
+            'sensors': 130,
+            'warp': 9.5,
+            'crew_capacity': 750,
+            'reputation_cost': 1400,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Galaxy-class variant, science mission focused'
+        
+        },
+        'Centaur': {
+
+            'type': 'Destroyer',
+            'hull': 110,
+            'shields': 105,
+            'armor': 21,
+            'power': 115,
+            'weapons': 95,
+            'sensors': 85,
+            'warp': 9.3,
+            'crew_capacity': 250,
+            'reputation_cost': 1400,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Kitbash destroyer, proven in Dominion War'
+        
+        },
+        'Intrepid': {
+
+            'type': 'Light Explorer',
+            'hull': 100,
+            'shields': 100,
+            'armor': 15,
+            'power': 120,
+            'weapons': 70,
+            'sensors': 120,
+            'warp': 9.975,
+            'crew_capacity': 150,
+            'reputation_cost': 1500,
+            'min_rank': 4,
+            'era': '24th Century',
+            'description': 'Long-range science vessel, cutting-edge technology'
+        
+        },
+        'Akira': {
+
+            'type': 'Heavy Cruiser',
+            'hull': 140,
+            'shields': 130,
+            'armor': 21,
+            'power': 140,
+            'weapons': 115,
+            'sensors': 85,
+            'warp': 9.4,
+            'crew_capacity': 500,
+            'reputation_cost': 1700,
+            'min_rank': 5,
+            'era': '24th Century',
+            'description': 'Heavily armed cruiser, torpedo specialist'
+        
+        },
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 5: FLEET CAPTAIN - Advanced Ships (1500-2000 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Curry': {
+
+            'type': 'Cruiser',
+            'hull': 125,
+            'shields': 115,
+            'armor': 18,
+            'power': 125,
+            'weapons': 100,
+            'sensors': 85,
+            'warp': 9.3,
+            'crew_capacity': 350,
+            'reputation_cost': 1500,
+            'min_rank': 5,
+            'era': '24th Century',
+            'description': 'Excelsior variant with additional mission pods'
+        
+        },
+        'Aquarius': {
+
+            'type': 'Embedded Escort',
+            'hull': 70,
+            'shields': 80,
+            'armor': 16,
+            'power': 90,
+            'weapons': 100,
+            'sensors': 75,
+            'warp': 9.5,
+            'crew_capacity': 40,
+            'reputation_cost': 1500,
+            'min_rank': 5,
+            'era': '24th-25th Century',
+            'description': 'Compact escort, deployed from Odyssey-class ships'
+        
+        },
+        'Defiant': {
+
+            'type': 'Escort Warship',
+            'hull': 80,
+            'shields': 100,
+            'armor': 18,
+            'power': 100,
+            'weapons': 120,
+            'sensors': 80,
+            'warp': 9.5,
+            'crew_capacity': 50,
+            'reputation_cost': 1600,
+            'min_rank': 5,
+            'era': '24th Century',
+            'description': 'Tough little ship, designed to fight the Borg'
+        
+        },
+        'California': {
+
+            'type': 'Support Ship',
+            'hull': 120,
+            'shields': 110,
+            'armor': 18,
+            'power': 125,
+            'weapons': 75,
+            'sensors': 95,
+            'warp': 9.0,
+            'crew_capacity': 350,
+            'reputation_cost': 1600,
+            'min_rank': 5,
+            'era': '24th Century',
+            'description': 'Second contact and support vessel, engineering focused'
+        
+        },
+        'Parliament': {
+
+            'type': 'Utility Cruiser',
+            'hull': 130,
+            'shields': 120,
+            'armor': 19,
+            'power': 130,
+            'weapons': 85,
+            'sensors': 100,
+            'warp': 9.2,
+            'crew_capacity': 500,
+            'reputation_cost': 1800,
+            'min_rank': 5,
+            'era': '24th Century',
+            'description': 'Versatile utility cruiser for various support roles'
+        
+        },
+        'Galaxy': {
+
+            'type': 'Explorer',
+            'hull': 200,
+            'shields': 150,
+            'armor': 30,
+            'power': 180,
+            'weapons': 100,
+            'sensors': 110,
+            'warp': 9.6,
+            'crew_capacity': 1000,
+            'reputation_cost': 2000,
+            'min_rank': 5,
+            'era': '24th Century',
+            'description': 'Flagship class, designed for long-term deep space missions'
+        
+        },
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 6: COMMODORE - Elite Ships (2200-2900 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Reliant': {
+
+            'type': 'Cruiser',
+            'hull': 135,
+            'shields': 125,
+            'armor': 20,
+            'power': 135,
+            'weapons': 105,
+            'sensors': 90,
+            'warp': 9.4,
+            'crew_capacity': 400,
+            'reputation_cost': 2200,
+            'min_rank': 6,
+            'era': '24th Century',
+            'description': 'Reliable cruiser design, named for the famous Miranda-class ship'
+        
+        },
+        'Ross': {
+
+            'type': 'Cruiser',
+            'hull': 140,
+            'shields': 130,
+            'armor': 21,
+            'power': 140,
+            'weapons': 110,
+            'sensors': 95,
+            'warp': 9.5,
+            'crew_capacity': 450,
+            'reputation_cost': 2300,
+            'min_rank': 6,
+            'era': '24th Century',
+            'description': 'Advanced cruiser, named for Admiral Ross'
+        
+        },
+        'Inquiry': {
+
+            'type': 'Heavy Cruiser',
+            'hull': 145,
+            'shields': 135,
+            'armor': 21,
+            'power': 145,
+            'weapons': 115,
+            'sensors': 95,
+            'warp': 9.5,
+            'crew_capacity': 550,
+            'reputation_cost': 2400,
+            'min_rank': 6,
+            'era': '24th Century',
+            'description': 'Modern heavy cruiser, mainstay of late-24th century Starfleet'
+        
+        },
+        'Sutherland': {
+
+            'type': 'Science Cruiser',
+            'hull': 155,
+            'shields': 135,
+            'armor': 16,
+            'power': 150,
+            'weapons': 95,
+            'sensors': 125,
+            'warp': 9.5,
+            'crew_capacity': 600,
+            'reputation_cost': 2400,
+            'min_rank': 6,
+            'era': '24th Century',
+            'description': 'Nebula variant with enhanced science capabilities'
+        
+        },
+        'Sovereign': {
+
+            'type': 'Battlecruiser',
+            'hull': 180,
+            'shields': 160,
+            'armor': 40,
+            'power': 170,
+            'weapons': 130,
+            'sensors': 100,
+            'warp': 9.7,
+            'crew_capacity': 855,
+            'reputation_cost': 2500,
+            'min_rank': 6,
+            'era': '24th Century',
+            'description': 'Premier warship, designed after Borg encounters'
+        
+        },
+        'Obena': {
+
+            'type': 'Heavy Cruiser',
+            'hull': 150,
+            'shields': 140,
+            'armor': 22,
+            'power': 150,
+            'weapons': 120,
+            'sensors': 95,
+            'warp': 9.5,
+            'crew_capacity': 600,
+            'reputation_cost': 2500,
+            'min_rank': 6,
+            'era': '24th Century',
+            'description': 'Modern heavy cruiser, sleek and powerful'
+        
+        },
+        'Dauntless': {
+
+            'type': 'Experimental Science Vessel',
+            'hull': 115,
+            'shields': 120,
+            'armor': 14,
+            'power': 135,
+            'weapons': 85,
+            'sensors': 135,
+            'warp': 9.975,
+            'crew_capacity': 150,
+            'reputation_cost': 2700,
+            'min_rank': 6,
+            'era': '24th-25th Century',
+            'description': 'Particle synthesis drive, extremely fast'
+        
+        },
+        'Prometheus': {
+
+            'type': 'Advanced Escort',
+            'hull': 120,
+            'shields': 140,
+            'armor': 23,
+            'power': 150,
+            'weapons': 140,
+            'sensors': 105,
+            'warp': 9.9,
+            'crew_capacity': 50,
+            'reputation_cost': 2800,
+            'min_rank': 6,
+            'era': '24th Century',
+            'description': 'Multi-vector assault mode, cutting-edge tactical ship'
+        
+        },
+        'Protostar': {
+
+            'type': 'Experimental Warship',
+            'hull': 110,
+            'shields': 115,
+            'armor': 24,
+            'power': 140,
+            'weapons': 115,
+            'sensors': 100,
+            'warp': 9.9,
+            'crew_capacity': 20,
+            'reputation_cost': 2900,
+            'min_rank': 6,
+            'era': '24th Century',
+            'description': 'Experimental proto-drive, compact powerhouse'
+        
+        },
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 7: REAR ADMIRAL - 25th Century Fleet (2600-3500 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Luna': {
+
+            'type': 'Deep Space Science Vessel',
+            'hull': 130,
+            'shields': 130,
+            'armor': 13,
+            'power': 140,
+            'weapons': 80,
+            'sensors': 140,
+            'warp': 9.7,
+            'crew_capacity': 350,
+            'reputation_cost': 2600,
+            'min_rank': 7,
+            'era': '24th Century',
+            'description': 'Advanced explorer, designed for deep space science'
+        
+        },
+        'Pathfinder': {
+
+            'type': 'Long Range Science Vessel',
+            'hull': 110,
+            'shields': 110,
+            'armor': 13,
+            'power': 130,
+            'weapons': 75,
+            'sensors': 135,
+            'warp': 9.975,
+            'crew_capacity': 200,
+            'reputation_cost': 2800,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Intrepid variant with enhanced long-range capabilities'
+        
+        },
+        'Jein': {
+
+            'type': 'Cruiser',
+            'hull': 145,
+            'shields': 135,
+            'armor': 26,
+            'power': 150,
+            'weapons': 110,
+            'sensors': 105,
+            'warp': 9.5,
+            'crew_capacity': 550,
+            'reputation_cost': 2800,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Named for Star Trek model-maker Greg Jein'
+        
+        },
+        'Shepard': {
+
+            'type': 'Battlecruiser',
+            'hull': 160,
+            'shields': 145,
+            'armor': 43,
+            'power': 160,
+            'weapons': 120,
+            'sensors': 95,
+            'warp': 9.6,
+            'crew_capacity': 700,
+            'reputation_cost': 2900,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Heavy battlecruiser, designed for extended combat'
+        
+        },
+        'Duderstadt': {
+
+            'type': 'Science Vessel',
+            'hull': 125,
+            'shields': 125,
+            'armor': 15,
+            'power': 140,
+            'weapons': 85,
+            'sensors': 140,
+            'warp': 9.6,
+            'crew_capacity': 400,
+            'reputation_cost': 2900,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Modern science vessel with cutting-edge sensors'
+        
+        },
+        'Gagarin': {
+
+            'type': 'Battlecruiser',
+            'hull': 165,
+            'shields': 150,
+            'armor': 44,
+            'power': 165,
+            'weapons': 125,
+            'sensors': 100,
+            'warp': 9.6,
+            'crew_capacity': 750,
+            'reputation_cost': 3000,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Shepard-class variant, balanced battlecruiser'
+        
+        },
+        'Excelsior II': {
+
+            'type': 'Advanced Heavy Cruiser',
+            'hull': 170,
+            'shields': 145,
+            'armor': 30,
+            'power': 165,
+            'weapons': 115,
+            'sensors': 100,
+            'warp': 9.6,
+            'crew_capacity': 800,
+            'reputation_cost': 3000,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': '25th century refit of legendary Excelsior design'
+        
+        },
+        'Alita': {
+
+            'type': 'Heavy Escort Carrier',
+            'hull': 145,
+            'shields': 135,
+            'armor': 33,
+            'power': 145,
+            'weapons': 125,
+            'sensors': 90,
+            'warp': 9.5,
+            'crew_capacity': 550,
+            'reputation_cost': 3100,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Akira variant with enhanced hangar facilities'
+        
+        },
+        'Echelon': {
+
+            'type': 'Battlecruiser',
+            'hull': 160,
+            'shields': 150,
+            'armor': 43,
+            'power': 165,
+            'weapons': 125,
+            'sensors': 100,
+            'warp': 9.6,
+            'crew_capacity': 700,
+            'reputation_cost': 3100,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Heavy battlecruiser, powerful and versatile'
+        
+        },
+        'Edison': {
+
+            'type': 'Temporal Warship',
+            'hull': 140,
+            'shields': 140,
+            'armor': 37,
+            'power': 155,
+            'weapons': 130,
+            'sensors': 110,
+            'warp': 9.7,
+            'crew_capacity': 300,
+            'reputation_cost': 3200,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Temporal Defense Initiative design, advanced tech'
+        
+        },
+        'Sagan': {
+
+            'type': 'Multi-Mission Explorer',
+            'hull': 150,
+            'shields': 140,
+            'armor': 27,
+            'power': 155,
+            'weapons': 100,
+            'sensors': 130,
+            'warp': 9.7,
+            'crew_capacity': 600,
+            'reputation_cost': 3200,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Advanced science explorer, named for Carl Sagan'
+        
+        },
+        'Constitution III': {
+
+            'type': 'Exploration Vessel',
+            'hull': 155,
+            'shields': 140,
+            'armor': 27,
+            'power': 160,
+            'weapons': 110,
+            'sensors': 120,
+            'warp': 9.7,
+            'crew_capacity': 500,
+            'reputation_cost': 3300,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': '25th century successor to the legendary Constitution line'
+        
+        },
+        'Vesta': {
+
+            'type': 'Multi-Mission Explorer',
+            'hull': 150,
+            'shields': 145,
+            'armor': 27,
+            'power': 160,
+            'weapons': 105,
+            'sensors': 140,
+            'warp': 9.85,
+            'crew_capacity': 750,
+            'reputation_cost': 3500,
+            'min_rank': 7,
+            'era': '25th Century',
+            'description': 'Versatile explorer with quantum slipstream drive'
+        
+        },
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # RANK 8: VICE ADMIRAL - Command Ships (3600-4200 Rep)
+        # ═══════════════════════════════════════════════════════════════════
+        
+        'Curiosity': {
+
+            'type': 'Heavy Cruiser',
+            'hull': 165,
+            'shields': 155,
+            'armor': 29,
+            'power': 170,
+            'weapons': 120,
+            'sensors': 110,
+            'warp': 9.7,
+            'crew_capacity': 800,
+            'reputation_cost': 3600,
+            'min_rank': 8,
+            'era': '25th Century',
+            'description': 'Advanced heavy cruiser, balanced and powerful'
+        
+        },
+        'Venture': {
+
+            'type': 'Galaxy Dreadnought',
+            'hull': 210,
+            'shields': 170,
+            'armor': 56,
+            'power': 190,
+            'weapons': 135,
+            'sensors': 115,
+            'warp': 9.7,
+            'crew_capacity': 1000,
+            'reputation_cost': 3800,
+            'min_rank': 8,
+            'era': '25th Century',
+            'description': 'Galaxy-class with third nacelle and enhanced weapons'
+        
+        },
+        'Odyssey': {
+
+            'type': 'Star Cruiser',
+            'hull': 220,
+            'shields': 180,
+            'armor': 39,
+            'power': 200,
+            'weapons': 120,
+            'sensors': 120,
+            'warp': 9.8,
+            'crew_capacity': 2500,
+            'reputation_cost': 4000,
+            'min_rank': 8,
+            'era': '25th Century',
+            'description': 'Massive explorer-battleship, flagship material'
+        
+        },
+        'Yorktown': {
+
+            'type': 'Science Star Cruiser',
+            'hull': 215,
+            'shields': 175,
+            'armor': 27,
+            'power': 195,
+            'weapons': 110,
+            'sensors': 145,
+            'warp': 9.8,
+            'crew_capacity': 2500,
+            'reputation_cost': 4200,
+            'min_rank': 8,
+            'era': '25th Century',
+            'description': 'Science-focused Odyssey variant, top-tier sensors'
+        
+        }
+    }
+    
+    def __init__(self, name, ship_class, registry):
+        self.name = name
+        self.ship_class = ship_class
+        self.registry = registry
+        self.specs = self.SHIP_CLASSES[ship_class].copy()
+        
+        # Current status (can be damaged)
+        self.current_hull = self.specs['hull']
+        self.current_shields = self.specs['shields']
+        self.current_power = self.specs['power']
+        self.current_armor = self.specs.get('armor', 0)  # Armor system (absorbs damage before shields)
+        
+        # Systems status (0-100%)
+        self.systems = {
+            'weapons': 100,
+            'shields': 100,
+            'sensors': 100,
+            'engines': 100,
+            'life_support': 100,
+            'transporter': 100
+        }
+        
+        # Current location
+        self.location = None  # Will be set by galaxy
+        self.sector_x = 0
+        self.sector_y = 0
+        
+        # Crew (legacy simple system)
+        self.crew_count = self.specs['crew_capacity']
+        self.max_crew = self.specs['crew_capacity']  # Track maximum crew capacity
+        self.crew_morale = 80
+        self.key_crew = {}
+        self.casualties_this_combat = 0  # Track casualties in current battle
+        
+        # Bridge crew officer roster (new crew officer system)
+        # Dictionary mapping station names to Officer objects
+        # Stations: 'conn', 'tactical', 'engineering', 'science', 'medical', 'communications'
+        self.crew_roster = {}
+        
+        # Cargo and resources
+        self.cargo = []
+        self.dilithium = 1000
+        self.provisions = 100
+        
+    def take_damage(self, amount, target='hull', weapon_type='phaser'):
+        """Take damage to shields, armor, or hull with weapon-specific mechanics
+        
+        Weapon Types & Shield Effectiveness:
+        - 'phaser': Weak vs shields (50% effective), Strong vs hull/armor (100% damage)
+        - 'torpedo': Strong vs shields (90% effective), Devastating vs hull/armor (200% damage when through)
+        - 'missile': Strong vs shields (85% effective), Heavy vs hull/armor (150% damage when through)
+        
+        Damage Flow:
+        1. Shields absorb damage based on weapon effectiveness
+        2. Shield bleed-through gets damage multiplier
+        3. Armor reduces bleed-through damage by 50%
+        4. Remaining damage hits hull
+        5. Armor degrades from bleed-through
+        """
+        if target == 'hull':
+            # Direct hull hit (rare)
+            self.current_hull = max(0, self.current_hull - amount)
+        elif target == 'shields':
+            # Weapon effectiveness vs shields and hull damage multiplier
+            if weapon_type == 'phaser':
+                shield_effectiveness = 0.50  # Phasers do 50% damage to shields
+                hull_multiplier = 1.0        # Normal damage to hull/armor
+                bleed_percent = 0.10         # 10% bleeds through
+            elif weapon_type == 'torpedo':
+                shield_effectiveness = 0.90  # Torpedoes do 90% damage to shields (good absorption)
+                hull_multiplier = 2.0        # 200% damage to hull/armor (devastating)
+                bleed_percent = 0.05         # Only 5% bleeds through (shields good vs kinetic)
+            elif weapon_type == 'missile':
+                shield_effectiveness = 0.85  # Missiles do 85% damage to shields
+                hull_multiplier = 1.5        # 150% damage to hull/armor
+                bleed_percent = 0.08         # 8% bleeds through
+            else:
+                shield_effectiveness = 0.50
+                hull_multiplier = 1.0
+                bleed_percent = 0.10
+            
+            # Calculate actual damage to shields (reduced by effectiveness)
+            shield_damage = amount * shield_effectiveness
+            
+            # Calculate bleed-through (small percentage always gets through)
+            bleed_through = amount * bleed_percent * hull_multiplier
+            
+            # Apply damage to shields
+            shield_overflow = max(0, shield_damage - self.current_shields)
+            self.current_shields = max(0, self.current_shields - shield_damage)
+            
+            # If shields fail, overflow gets the hull multiplier
+            if shield_overflow > 0:
+                overflow_to_hull = shield_overflow * hull_multiplier
+                total_bleed = bleed_through + overflow_to_hull
+            else:
+                total_bleed = bleed_through
+            
+            # Armor reduces bleed-through damage by 50%
+            if self.current_armor > 0 and total_bleed > 0:
+                armor_blocked = total_bleed * 0.5  # Armor blocks 50%
+                hull_damage = total_bleed - armor_blocked
+                
+                # Armor degrades from absorbed damage
+                self.current_armor = max(0, self.current_armor - armor_blocked)
+                
+                # Hull takes remaining damage
+                self.current_hull = max(0, self.current_hull - hull_damage)
+                
+                # Check for systems damage and casualties from hull damage
+                self._process_hull_damage(hull_damage)
+            elif total_bleed > 0:
+                # No armor, hull takes full bleed-through
+                self.current_hull = max(0, self.current_hull - total_bleed)
+                
+                # Check for systems damage and casualties
+                self._process_hull_damage(total_bleed)
+    
+    def _process_hull_damage(self, hull_damage):
+        """Process systems damage and crew casualties from hull damage"""
+        if hull_damage <= 0:
+            return
+        
+        # Calculate hull integrity percentage
+        hull_percent = (self.current_hull / self.specs['hull']) * 100
+        
+        # Systems damage chance increases as hull integrity decreases
+        # Shields up = light damage, shields down = heavy damage
+        shields_up = self.current_shields > 0
+        
+        if shields_up:
+            # Light systems damage when shields are still up
+            base_damage_chance = 0.15  # 15% chance per system
+            damage_amount = random.randint(2, 8)
+        else:
+            # Heavy systems damage when shields are down
+            base_damage_chance = 0.40  # 40% chance per system
+            damage_amount = random.randint(5, 15)
+        
+        # Hull integrity modifier (worse hull = more damage)
+        if hull_percent < 25:
+            base_damage_chance *= 2.0
+            damage_amount = int(damage_amount * 1.5)
+        elif hull_percent < 50:
+            base_damage_chance *= 1.5
+            damage_amount = int(damage_amount * 1.2)
+        
+        # Check each system for damage
+        for system in self.systems:
+            if random.random() < base_damage_chance:
+                old_status = self.systems[system]
+                self.systems[system] = max(0, self.systems[system] - damage_amount)
+                
+                # System-specific effects happen in get_system_penalties()
+        
+        # Crew casualties
+        self._process_casualties(hull_damage, shields_up)
+                    
+    def _process_casualties(self, hull_damage, shields_up):
+        """Process crew casualties from hull damage"""
+        if hull_damage <= 0 or self.crew_count <= 0:
+            return
+        
+        # Base casualty rate (deaths per 10 hull damage)
+        if shields_up:
+            base_casualty_rate = 0.5  # Light casualties with shields
+        else:
+            base_casualty_rate = 2.0  # Heavy casualties without shields
+        
+        # Medical officer reduces casualties
+        medical_bonus = self.get_crew_bonus('medical')
+        casualty_reduction = 1.0 - (medical_bonus / 200.0)  # Up to 50% reduction at max skill
+        
+        # Calculate casualties
+        potential_casualties = (hull_damage / 10.0) * base_casualty_rate * casualty_reduction
+        actual_casualties = int(potential_casualties + (random.random() * 2))
+        
+        # Apply casualties
+        if actual_casualties > 0:
+            self.crew_count = max(0, self.crew_count - actual_casualties)
+            self.casualties_this_combat += actual_casualties
+            
+            # Morale drops when crew dies
+            morale_loss = min(actual_casualties, 10)
+            self.crew_morale = max(0, self.crew_morale - morale_loss)
+    
+    def regenerate_crew(self, stardates_passed):
+        """Slowly regenerate crew over time (medical bay recovery, transfers, etc)"""
+        if self.crew_count >= self.max_crew:
+            return 0
+        
+        # Medical officer affects recovery rate
+        medical_bonus = self.get_crew_bonus('medical')
+        base_recovery = 1 + (medical_bonus / 50.0)  # 1-3 crew per stardate at max skill
+        
+        # Recover crew over time
+        crew_recovered = int(base_recovery * stardates_passed)
+        crew_recovered = min(crew_recovered, self.max_crew - self.crew_count)
+        
+        if crew_recovered > 0:
+            self.crew_count = min(self.max_crew, self.crew_count + crew_recovered)
+            # Morale slowly improves with recovery
+            self.crew_morale = min(100, self.crew_morale + (crew_recovered // 2))
+        
+        return crew_recovered
+    
+    def get_crew_effectiveness(self):
+        """Calculate overall crew effectiveness based on crew count and morale"""
+        # Crew complement percentage
+        crew_percent = self.crew_count / self.max_crew
+        
+        # Morale effect (0-100% converted to 0.5-1.0 multiplier)
+        morale_multiplier = 0.5 + (self.crew_morale / 200.0)
+        
+        # Combined effectiveness (50-100%)
+        effectiveness = crew_percent * morale_multiplier
+        return max(0.5, min(1.0, effectiveness))
+    
+    def get_system_penalties(self):
+        """Get performance penalties from damaged systems
+        
+        Returns dict with penalty multipliers for various ship functions
+        """
+        penalties = {
+            'weapons_damage': 1.0,
+            'weapons_accuracy': 1.0,
+            'warp_speed': 1.0,
+            'shield_recharge': 1.0,
+            'sensor_range': 1.0,
+            'evasion': 1.0
+        }
+        
+        # Weapons system affects damage and accuracy
+        weapons_status = self.systems['weapons'] / 100.0
+        penalties['weapons_damage'] *= weapons_status
+        penalties['weapons_accuracy'] *= weapons_status
+        
+        # Engines affect warp speed and evasion
+        engines_status = self.systems['engines'] / 100.0
+        penalties['warp_speed'] *= engines_status
+        penalties['evasion'] *= (0.5 + engines_status * 0.5)  # Min 50% evasion
+        
+        # Shields system affects recharge rate
+        shields_status = self.systems['shields'] / 100.0
+        penalties['shield_recharge'] *= shields_status
+        
+        # Sensors affect scan range and targeting
+        sensors_status = self.systems['sensors'] / 100.0
+        penalties['sensor_range'] *= sensors_status
+        penalties['weapons_accuracy'] *= (0.8 + sensors_status * 0.2)  # Min 80% accuracy
+        
+        # Life support affects crew effectiveness
+        life_support_status = self.systems['life_support'] / 100.0
+        crew_effectiveness = self.get_crew_effectiveness() * life_support_status
+        
+        # Apply crew effectiveness to all penalties
+        for key in penalties:
+            penalties[key] *= crew_effectiveness
+        
+        return penalties
+    
+    def process_life_support_damage(self):
+        """Process ongoing crew loss from damaged life support"""
+        life_support = self.systems['life_support']
+        
+        if life_support < 100 and self.crew_count > 0:
+            # Crew slowly dies when life support is damaged
+            death_rate = (100 - life_support) / 100.0  # 0-100% death rate
+            
+            # Medical officer can mitigate some life support failure
+            medical_bonus = self.get_crew_bonus('medical')
+            mitigation = 1.0 - (medical_bonus / 300.0)  # Up to 33% mitigation
+            
+            potential_deaths = death_rate * mitigation * 2  # Up to 2 crew per tick
+            
+            if random.random() < potential_deaths:
+                casualties = max(1, int(potential_deaths))
+                self.crew_count = max(0, self.crew_count - casualties)
+                self.crew_morale = max(0, self.crew_morale - casualties)
+                return casualties
+        
+        return 0
+    
+    def repair(self, amount):
+        """Repair hull damage"""
+        self.current_hull = min(self.specs['hull'], self.current_hull + amount)
+        
+    def recharge_shields(self, amount):
+        """Recharge shields"""
+        self.current_shields = min(self.specs['shields'], self.current_shields + amount)
+    
+    def repair_armor(self, amount):
+        """Repair armor plating (requires shipyard repairs)"""
+        max_armor = self.specs.get('armor', 0)
+        self.current_armor = min(max_armor, self.current_armor + amount)
+        
+    def repair_system(self, system, amount):
+        """Repair a specific system"""
+        if system in self.systems:
+            self.systems[system] = min(100, self.systems[system] + amount)
+            
+    def is_destroyed(self):
+        """Check if ship is destroyed"""
+        return self.current_hull <= 0
+        
+    def get_status(self):
+        """Get overall ship status"""
+        hull_percent = (self.current_hull / self.specs['hull']) * 100
+        shields_percent = (self.current_shields / self.specs['shields']) * 100
+        max_armor = self.specs.get('armor', 0)
+        armor_percent = (self.current_armor / max_armor * 100) if max_armor > 0 else 0
+        
+        # Status considers hull, shields, and armor
+        overall = (hull_percent + shields_percent + armor_percent) / 3
+        
+        if overall >= 80:
+            return "Optimal"
+        elif overall >= 50:
+            return "Good"
+        elif overall >= 30:
+            return "Damaged"
+        elif overall >= 10:
+            return "Critical"
+        else:
+            return "Emergency"
+    
+    def get_crew_bonus(self, station):
+        """
+        Get the crew bonus percentage for a specific station
+        
+        Args:
+            station (str): Station name ('conn', 'tactical', 'engineering', etc.)
+            
+        Returns:
+            float: Bonus percentage (0.0 to 20.0+)
+        """
+        if station in self.crew_roster:
+            return self.crew_roster[station].get_station_bonus()
+        return 0.0
+    
+    def has_officer_at_station(self, station):
+        """Check if a station has an assigned officer"""
+        return station in self.crew_roster and self.crew_roster[station] is not None
+            
+    def to_dict(self):
+        """Convert ship to dictionary for saving"""
+        # Convert crew roster Officers to dictionaries
+        crew_roster_data = {}
+        for station, officer in self.crew_roster.items():
+            crew_roster_data[station] = officer.to_dict()
+        
+        return {
+            'name': self.name,
+            'ship_class': self.ship_class,
+            'registry': self.registry,
+            'current_hull': self.current_hull,
+            'current_shields': self.current_shields,
+            'current_armor': self.current_armor,  # Armor system
+            'current_power': self.current_power,
+            'systems': self.systems,
+            'location': self.location,
+            'sector_x': self.sector_x,
+            'sector_y': self.sector_y,
+            'crew_count': self.crew_count,
+            'crew_morale': self.crew_morale,
+            'key_crew': self.key_crew,
+            'crew_roster': crew_roster_data,  # New crew system
+            'cargo': self.cargo,
+            'dilithium': self.dilithium,
+            'provisions': self.provisions
+        }
+        
+    @classmethod
+    def from_dict(cls, data):
+        """Create ship from dictionary"""
+        from game.crew import Officer
+        
+        ship = cls(data['name'], data['ship_class'], data['registry'])
+        ship.current_hull = data['current_hull']
+        ship.current_shields = data['current_shields']
+        ship.current_armor = data.get('current_armor', ship.specs.get('armor', 0))  # Load armor, default to max if not in save
+        ship.current_power = data['current_power']
+        ship.systems = data['systems']
+        ship.location = data['location']
+        ship.sector_x = data['sector_x']
+        ship.sector_y = data['sector_y']
+        ship.crew_count = data['crew_count']
+        ship.crew_morale = data['crew_morale']
+        ship.key_crew = data['key_crew']
+        
+        # Load crew roster (new crew system)
+        ship.crew_roster = {}
+        if 'crew_roster' in data:
+            for station, officer_data in data['crew_roster'].items():
+                ship.crew_roster[station] = Officer.from_dict(officer_data)
+        
+        ship.cargo = data['cargo']
+        ship.dilithium = data['dilithium']
+        ship.provisions = data['provisions']
+        return ship
+        
+    @classmethod
+    def create_starting_ship(cls, species):
+        """Create an appropriate starting ship - ALL species now start with Miranda"""
+        # Everyone starts with Miranda-class to earn their way up
+        ship_class = 'Miranda'
+        registry = f'NCC-{random.randint(31000, 31999)}'
+        
+        # Generate a random name for the Miranda
+        ship_names = [
+            'USS Reliant', 'USS Lantree', 'USS Saratoga', 'USS Brattain',
+            'USS Bozeman', 'USS Trial', 'USS Nautilus', 'USS ShirKahr',
+            'USS Centaur', 'USS Majestic', 'USS Antares', 'USS Cortez'
+        ]
+        name = random.choice(ship_names)
+        
+        return cls(name, ship_class, registry)
+    
+    @classmethod
+    def get_available_ships(cls, character):
+        """Get list of ships available for purchase based on rank and reputation"""
+        available = []
+        
+        for ship_class, specs in cls.SHIP_CLASSES.items():
+            if character.rank_level >= specs['min_rank']:
+                available.append({
+                    'class': ship_class,
+                    'specs': specs,
+                    'can_afford': hasattr(character, 'reputation') and character.reputation >= specs['reputation_cost']
+                })
+        
+        return sorted(available, key=lambda x: x['specs']['min_rank'])
+    
+    @classmethod
+    def get_ship_info(cls, ship_class):
+        """Get detailed information about a ship class"""
+        if ship_class in cls.SHIP_CLASSES:
+            return cls.SHIP_CLASSES[ship_class]
+        return None

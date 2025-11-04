@@ -1,0 +1,559 @@
+"""
+Advanced Ship System for Star Trek Game
+Detailed ship mechanics including systems, crew, power management, and combat
+Based on comprehensive design document
+"""
+import random
+
+
+class AdvancedShip:
+    """
+    Detailed starship with all systems and crew
+    This is the new comprehensive ship system
+    """
+    
+    def __init__(self, name, registry, ship_class, ship_type, era_year):
+        # ═══════════════════════════════════════════════════════════════════
+        # BASIC INFORMATION
+        # ═══════════════════════════════════════════════════════════════════
+        self.name = name
+        self.registry = registry
+        self.ship_class = ship_class  # Miranda, Galaxy, etc.
+        self.ship_type = ship_type  # Frigate, Cruiser, etc.
+        self.era_year = era_year
+        self.reputation_cost = 0  # Set by ship template
+        self.minimum_rank = 0  # Set by ship template
+        self.size = "Medium"  # Small, Medium, Large, Very Large, Huge
+        self.cargo_space = 100  # Cargo capacity
+        self.upgrade_space = 100  # Space for upgrades
+        self.upgrade_space_used = 0
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # NAVIGATION
+        # ═══════════════════════════════════════════════════════════════════
+        self.sensor_range = 5  # Hexes
+        self.turn_speed = 2  # Hexes before turn (0=instant, higher=slower)
+        self.impulse_speed = 5  # Combat movement
+        self.warp_speed = 6.0  # Warp factor for travel
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # OFFENSE
+        # ═══════════════════════════════════════════════════════════════════
+        self.weapon_arrays = []  # List of WeaponArray objects
+        self.torpedo_bays = []  # List of TorpedoBay objects
+        self.special_weapons = []  # List of special weapons
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # DEFENSES
+        # ═══════════════════════════════════════════════════════════════════
+        self.max_hull = 1000
+        self.hull = 1000
+        self.armor = 50  # Damage reduction
+        self.shields = {
+            'fore': 500,
+            'aft': 500,
+            'port': 500,
+            'starboard': 500
+        }
+        self.max_shields = {
+            'fore': 500,
+            'aft': 500,
+            'port': 500,
+            'starboard': 500
+        }
+        
+        # Torpedo damage mechanics (adjustable at top of file)
+        self.torpedo_shield_block = 0.90  # 90% blocked by shields
+        self.torpedo_bypass = 0.10  # 10% always bleeds through
+        self.torpedo_shield_cost = 0.20  # 20% deducted from shield meter
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # POWER ALLOCATION
+        # ═══════════════════════════════════════════════════════════════════
+        self.warp_core_max_power = 300  # Total power available
+        self.power_distribution = {
+            'engines': 100,
+            'shields': 100,
+            'weapons': 100
+        }
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # SYSTEMS (Health Measured from 0-100)
+        # ═══════════════════════════════════════════════════════════════════
+        self.systems = {
+            'warp_core': 100,
+            'life_support': 100,
+            'warp_engines': 100,
+            'impulse_engines': 100,
+            'weapons': 100,
+            'sensors': 100,
+            'shields': 100,
+            'engineering': 100,
+            'sick_bay': 100
+        }
+        
+        # System repair limits (field repairs)
+        # <25% can only repair to 25%, <50% can only repair to 50%
+        # Need starbase for full repairs
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # CREW
+        # ═══════════════════════════════════════════════════════════════════
+        self.max_crew = 200
+        self.crew_count = 200
+        self.crew_skill = "Regular"  # Cadet, Green, Regular, Veteran, Elite, Legendary
+        
+        # Crew skill bonuses:
+        # Cadet: +0%, Green: +5%, Regular: +10%, Veteran: +15%, Elite: +20%, Legendary: +25%
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # COMMAND CREW (These are where Legendary Officers are Born)
+        # ═══════════════════════════════════════════════════════════════════
+        self.command_crew = {
+            'captain': None,      # Player character
+            'tactical': None,     # Weapons & shields
+            'medical': None,      # Crew survival
+            'engineer': None,     # Repairs & warp core
+            'conn': None,         # Piloting & navigation
+            'science': None       # Sensors & analysis
+        }
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # COMBAT STATE
+        # ═══════════════════════════════════════════════════════════════════
+        self.facing = 0  # 0-5 hex facing
+        self.position = (0, 0)  # Hex coordinates
+        
+    # ═══════════════════════════════════════════════════════════════════
+    # CREW METHODS
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def get_crew_bonus(self):
+        """Get crew skill bonus percentage"""
+        bonuses = {
+            'Cadet': 0.0,
+            'Green': 0.05,
+            'Regular': 0.10,
+            'Veteran': 0.15,
+            'Elite': 0.20,
+            'Legendary': 0.25
+        }
+        return bonuses.get(self.crew_skill, 0.0)
+    
+    def train_crew(self):
+        """Train crew to next skill level (costs reputation)"""
+        levels = ['Cadet', 'Green', 'Regular', 'Veteran', 'Elite']
+        current_index = levels.index(self.crew_skill) if self.crew_skill in levels else -1
+        
+        if current_index < len(levels) - 1:
+            self.crew_skill = levels[current_index + 1]
+            return True
+        return False  # Can't train to Legendary, must earn it
+    
+    def check_crew_skill_degradation(self):
+        """
+        Check if crew skill drops due to casualties
+        For every 25% of crew killed, skill level drops 1 level
+        """
+        crew_percentage = self.crew_count / self.max_crew
+        
+        skill_levels = ['Cadet', 'Green', 'Regular', 'Veteran', 'Elite', 'Legendary']
+        current_index = skill_levels.index(self.crew_skill)
+        
+        # Determine how many levels to drop based on crew losses
+        if crew_percentage >= 0.75:
+            return  # No degradation
+        elif crew_percentage >= 0.50:
+            drop_levels = 1
+        elif crew_percentage >= 0.25:
+            drop_levels = 2
+        else:
+            drop_levels = 3
+        
+        new_index = max(0, current_index - drop_levels)
+        self.crew_skill = skill_levels[new_index]
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # SYSTEM EFFICIENCY & DAMAGE CASCADES
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def get_system_efficiency(self, system_name):
+        """
+        Get system efficiency (0.0 to 1.0+) including crew bonus and cascades
+        
+        Damage Cascades:
+        - Warp Core: Reduces all other systems if damaged
+        - Life Support: Reduces Weapons, Sensors, Engineering if damaged
+        - Sensors: Reduces weapon accuracy if damaged
+        """
+        base_efficiency = self.systems[system_name] / 100.0
+        crew_bonus = self.get_crew_bonus()
+        
+        # Apply damage cascades
+        if system_name != 'warp_core':
+            # Warp core damage affects everything
+            warp_core_efficiency = self.systems['warp_core'] / 100.0
+            base_efficiency *= warp_core_efficiency
+        
+        if system_name in ['weapons', 'sensors', 'engineering']:
+            # Life support affects these systems
+            life_support_efficiency = self.systems['life_support'] / 100.0
+            base_efficiency *= life_support_efficiency
+        
+        # Apply crew bonus
+        return min(2.0, base_efficiency * (1.0 + crew_bonus))  # Cap at 200%
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # POWER MANAGEMENT
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def get_available_power(self):
+        """Get total power available based on warp core health"""
+        warp_core_efficiency = self.systems['warp_core'] / 100.0
+        return int(self.warp_core_max_power * warp_core_efficiency)
+    
+    def redistribute_power(self, engines, shields, weapons):
+        """
+        Redistribute power between systems (must total to available power)
+        Adding power to one system takes it away from the other 2
+        """
+        available = self.get_available_power()
+        total = engines + shields + weapons
+        
+        if total <= available:
+            self.power_distribution['engines'] = engines
+            self.power_distribution['shields'] = shields
+            self.power_distribution['weapons'] = weapons
+            return True
+        return False
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # DAMAGE & COMBAT
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def take_damage(self, damage, arc, damage_type='energy'):
+        """
+        Apply damage to ship
+        
+        Args:
+            damage: Amount of damage
+            arc: 'fore', 'aft', 'port', 'starboard'
+            damage_type: 'energy', 'torpedo', 'special'
+        
+        Returns:
+            dict with damage results
+        """
+        if damage_type == 'torpedo':
+            # Torpedo mechanics: 90% blocked, 10% bypass, 20% shield cost
+            shield_blocked = damage * self.torpedo_shield_block
+            bypass_damage = damage * self.torpedo_bypass
+            shield_cost = damage * self.torpedo_shield_cost
+            
+            if self.shields[arc] > 0:
+                # Shield absorbs some damage
+                actual_shield_damage = min(shield_cost, self.shields[arc])
+                self.shields[arc] -= actual_shield_damage
+                
+                # Apply bypass damage to hull (reduced by armor)
+                hull_damage = bypass_damage * (1.0 - self.armor / 100.0)
+            else:
+                # Shields down, full torpedo damage to hull (reduced by armor)
+                hull_damage = damage * (1.0 - self.armor / 100.0)
+        else:
+            # Energy weapons: shields block all until depleted
+            if self.shields[arc] > 0:
+                shield_damage = min(damage, self.shields[arc])
+                self.shields[arc] -= shield_damage
+                remaining_damage = damage - shield_damage
+            else:
+                remaining_damage = damage
+            
+            # Apply remaining damage to hull (reduced by armor)
+            if remaining_damage > 0:
+                armor_reduction = self.armor / 100.0
+                hull_damage = remaining_damage * (1.0 - armor_reduction)
+            else:
+                hull_damage = 0
+        
+        # Apply hull damage
+        if hull_damage > 0:
+            self.hull -= hull_damage
+            
+            # Calculate crew casualties
+            casualties = self.calculate_casualties(hull_damage)
+            self.crew_count = max(0, self.crew_count - casualties)
+            
+            # Check for skill level drop (every 25% crew lost)
+            self.check_crew_skill_degradation()
+            
+            # Random system damage
+            self.apply_system_damage(hull_damage)
+        
+        # Check for destruction
+        if self.hull <= 0:
+            self.hull = 0
+            return {
+                'destroyed': True,
+                'warp_core_breach': self.check_warp_core_breach(),
+                'hull_damage': hull_damage,
+                'casualties': casualties
+            }
+        
+        return {
+            'destroyed': False,
+            'hull_damage': hull_damage,
+            'casualties': casualties if hull_damage > 0 else 0
+        }
+    
+    def calculate_casualties(self, hull_damage):
+        """
+        Calculate crew casualties from hull damage
+        Mitigated by life support, sick bay, and medical officer
+        """
+        # Base casualty rate
+        casualty_rate = hull_damage / self.max_hull * 0.1  # 10% of damage ratio
+        
+        # Mitigate with life support
+        life_support_efficiency = self.get_system_efficiency('life_support')
+        casualty_rate *= (1.0 - life_support_efficiency * 0.5)
+        
+        # Mitigate with sick bay
+        sick_bay_efficiency = self.get_system_efficiency('sick_bay')
+        casualty_rate *= (1.0 - sick_bay_efficiency * 0.3)
+        
+        # Mitigate with medical officer
+        if self.command_crew['medical']:
+            medical_bonus = self.command_crew['medical'].get_skill_bonus()
+            casualty_rate *= (1.0 - medical_bonus * 0.2)
+        
+        casualties = int(self.max_crew * casualty_rate)
+        return max(0, casualties)
+    
+    def apply_system_damage(self, hull_damage):
+        """Randomly damage systems based on hull damage"""
+        damage_chance = hull_damage / self.max_hull
+        
+        for system in self.systems:
+            if random.random() < damage_chance * 0.3:  # 30% of damage ratio
+                system_damage = random.randint(5, 20)
+                self.systems[system] = max(0, self.systems[system] - system_damage)
+    
+    def check_warp_core_breach(self):
+        """
+        Check if warp core breach occurs (player/crew death chance)
+        Engineer skill can prevent it
+        """
+        if self.systems['warp_core'] <= 0:
+            # Chance of survival based on engineer skill
+            if self.command_crew['engineer']:
+                engineer_bonus = self.command_crew['engineer'].get_skill_bonus()
+                survival_chance = engineer_bonus
+            else:
+                survival_chance = 0.1
+            
+            return random.random() > survival_chance
+        return False
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # REPAIRS
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def repair_system(self, system_name, repair_amount):
+        """
+        Repair a system (with field repair limits)
+        
+        Field Repair Limits:
+        - <25% health: Can only repair to 25%
+        - <50% health: Can only repair to 50%
+        - Need starbase for full repairs beyond these limits
+        """
+        current_health = self.systems[system_name]
+        
+        # Field repair limits
+        if current_health < 25:
+            max_field_repair = 25
+        elif current_health < 50:
+            max_field_repair = 50
+        else:
+            max_field_repair = 100
+        
+        # Engineering efficiency affects repair speed
+        engineering_efficiency = self.get_system_efficiency('engineering')
+        actual_repair = repair_amount * engineering_efficiency
+        
+        # Engineer officer bonus
+        if self.command_crew['engineer']:
+            engineer_bonus = self.command_crew['engineer'].get_skill_bonus()
+            actual_repair *= (1.0 + engineer_bonus)
+        
+        new_health = min(max_field_repair, current_health + actual_repair)
+        self.systems[system_name] = new_health
+        
+        return new_health
+    
+    def starbase_repair(self, system_name):
+        """Full repair at starbase (no limits)"""
+        self.systems[system_name] = 100
+        return 100
+    
+    def regenerate_shields(self, amount_per_arc):
+        """Regenerate shields based on power and system health"""
+        shield_efficiency = self.get_system_efficiency('shields')
+        shield_power = self.power_distribution['shields'] / 100.0
+        
+        regen_rate = amount_per_arc * shield_efficiency * shield_power
+        
+        for arc in self.shields:
+            self.shields[arc] = min(self.max_shields[arc], 
+                                   self.shields[arc] + regen_rate)
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # WEAPONS
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def fire_weapons(self, target, arc):
+        """
+        Fire all weapons in an arc at a target
+        
+        Args:
+            target: Target ship
+            arc: Firing arc ('fore', 'aft', 'port', 'starboard')
+        
+        Returns:
+            list of damage dealt
+        """
+        weapons_efficiency = self.get_system_efficiency('weapons')
+        sensors_efficiency = self.get_system_efficiency('sensors')
+        weapon_power = self.power_distribution['weapons'] / 100.0
+        crew_bonus = self.get_crew_bonus()
+        
+        # Tactical officer bonus
+        tactical_bonus = 0.0
+        if self.command_crew['tactical']:
+            tactical_bonus = self.command_crew['tactical'].get_skill_bonus()
+        
+        damage_dealt = []
+        
+        # Fire energy weapons in arc
+        for weapon in self.weapon_arrays:
+            if arc in weapon.firing_arcs:
+                # Calculate hit chance (sensors affect accuracy)
+                hit_chance = 0.85 * sensors_efficiency * (1.0 + tactical_bonus * 0.3)
+                
+                if random.random() < hit_chance:
+                    # Calculate damage
+                    base_damage = weapon.base_damage
+                    damage = base_damage * weapons_efficiency * weapon_power
+                    damage *= (1.0 + crew_bonus + tactical_bonus * 0.5)
+                    
+                    damage_dealt.append({
+                        'type': 'energy',
+                        'weapon': weapon.weapon_type,
+                        'damage': damage
+                    })
+        
+        # Fire torpedoes
+        for torp_bay in self.torpedo_bays:
+            if arc in torp_bay.firing_arcs and torp_bay.torpedoes > 0:
+                hit_chance = 0.75 * sensors_efficiency * (1.0 + tactical_bonus * 0.3)
+                
+                if random.random() < hit_chance:
+                    base_damage = torp_bay.base_damage
+                    damage = base_damage * weapons_efficiency
+                    damage *= (1.0 + tactical_bonus * 0.5)
+                    
+                    torp_bay.torpedoes -= 1
+                    
+                    damage_dealt.append({
+                        'type': 'torpedo',
+                        'weapon': torp_bay.torpedo_type,
+                        'damage': damage
+                    })
+        
+        return damage_dealt
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # STATUS
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def get_ship_status(self):
+        """Get comprehensive ship status"""
+        return {
+            'name': self.name,
+            'registry': self.registry,
+            'class': self.ship_class,
+            'type': self.ship_type,
+            'hull': f"{int(self.hull)}/{self.max_hull}",
+            'hull_percent': self.hull / self.max_hull * 100,
+            'shields': {arc: int(val) for arc, val in self.shields.items()},
+            'crew': f"{self.crew_count}/{self.max_crew}",
+            'crew_skill': self.crew_skill,
+            'systems': {k: int(v) for k, v in self.systems.items()},
+            'power': self.power_distribution,
+            'available_power': self.get_available_power()
+        }
+
+
+class WeaponArray:
+    """Energy weapon array (phasers, disruptors, etc)"""
+    
+    def __init__(self, weapon_type, base_damage, firing_arcs):
+        self.weapon_type = weapon_type  # 'phaser', 'disruptor', etc.
+        self.base_damage = base_damage
+        self.firing_arcs = firing_arcs  # List: ['fore', 'port', etc]
+        self.upgrade_space = 5  # Space used in ship
+
+
+class TorpedoBay:
+    """Torpedo launcher"""
+    
+    def __init__(self, torpedo_type, base_damage, firing_arcs, max_torpedoes=100):
+        self.torpedo_type = torpedo_type  # 'photon', 'quantum', etc.
+        self.base_damage = base_damage
+        self.firing_arcs = firing_arcs
+        self.torpedoes = max_torpedoes
+        self.max_torpedoes = max_torpedoes
+        self.upgrade_space = 10
+
+
+class CommandOfficer:
+    """Command crew officer"""
+    
+    def __init__(self, name, position, species, skill_level="Regular"):
+        self.name = name
+        self.position = position  # 'tactical', 'medical', etc.
+        self.species = species
+        self.skill_level = skill_level  # Cadet -> Legendary
+        self.experience = 0
+        
+    def get_skill_bonus(self):
+        """Get officer's skill bonus"""
+        bonuses = {
+            'Cadet': 0.0,
+            'Green': 0.05,
+            'Regular': 0.10,
+            'Veteran': 0.15,
+            'Elite': 0.20,
+            'Legendary': 0.25
+        }
+        return bonuses.get(self.skill_level, 0.0)
+    
+    def gain_experience(self, xp):
+        """Gain experience and potentially level up"""
+        self.experience += xp
+        
+        # Level up thresholds (can't train to Legendary, must earn it)
+        levels = ['Cadet', 'Green', 'Regular', 'Veteran', 'Elite', 'Legendary']
+        current_index = levels.index(self.skill_level)
+        
+        xp_required = [0, 100, 300, 600, 1000, 2000]
+        
+        for i in range(current_index + 1, len(levels)):
+            if self.experience >= xp_required[i]:
+                self.skill_level = levels[i]
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SHIP TEMPLATES
+# ═══════════════════════════════════════════════════════════════════
+

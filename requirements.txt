@@ -1,0 +1,12 @@
+# Star Trek: Captain's Career Simulator
+# Requirements file
+# 
+# This game uses only Python standard library
+# No external packages are required
+#
+# Minimum Python version: 3.7+
+
+# If you want to add optional enhancements in the future:
+# colorama>=0.4.6  # For colored console output
+# pygame>=2.1.0    # For sound effects and music
+# pillow>=9.0.0    # For ASCII art generation
