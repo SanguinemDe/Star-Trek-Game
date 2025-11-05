@@ -1491,17 +1491,16 @@ class CombatTestScreen:
         # TEMPORARILY DISABLED - Player always goes first for testing
         # import random
         # 
-        # ships = [self.player_ship, self.enemy_ship]
         # initiative_rolls = []
         # 
-        # for ship in ships:
+        # for ship in self.all_ships:
         #     # Base initiative from command crew skill (if present)
         #     base_initiative = 0
         #     if ship.command_crew.get('captain'):
         #         base_initiative = ship.command_crew['captain'].attributes.get('command', 50)
         #     
-        #     # Add random d20 roll
-        #     roll = random.randint(1, 20)
+        #     # Add random d100 roll
+        #     roll = random.randint(1, 100)
         #     total = base_initiative + roll
         #     
         #     initiative_rolls.append((ship, total, roll))
@@ -1510,8 +1509,8 @@ class CombatTestScreen:
         # initiative_rolls.sort(key=lambda x: x[1], reverse=True)
         # self.initiative_order = [ship for ship, total, roll in initiative_rolls]
         
-        # TESTING: Player always wins initiative
-        self.initiative_order = [self.player_ship, self.enemy_ship]
+        # TESTING: Player always wins initiative, but include ALL ships
+        self.initiative_order = [self.player_ship] + [ship for ship in self.all_ships if ship != self.player_ship]
     
     def advance_phase(self):
         """Move to next combat phase"""
@@ -3038,7 +3037,10 @@ class CombatTestScreen:
         self.status_panel.draw_tabs(self.screen, self.font_small)
         self.log_panel.draw(self.screen)
         
-        # Header
+        # Draw initiative tracker at the top
+        self._draw_initiative_tracker()
+        
+        # Header (moved down slightly to accommodate initiative tracker)
         title = self.font_large.render("COMBAT TEST ARENA", True, get_accent_color())
         title_rect = title.get_rect(center=(self.screen_width // 2, 40))
         self.screen.blit(title, title_rect)
@@ -3145,6 +3147,115 @@ class CombatTestScreen:
             self._draw_combat_summary()
         
         pygame.display.flip()
+    
+    def _draw_initiative_tracker(self):
+        """Draw initiative order tracker at the top of the screen"""
+        if not self.initiative_order or len(self.initiative_order) == 0:
+            return
+        
+        # Configuration
+        tracker_y = 70  # Y position for the tracker
+        ship_icon_size = 50  # Size of ship sprite in tracker
+        ship_spacing = 120  # Horizontal spacing between ships
+        
+        # Calculate total width and starting X position (centered)
+        total_width = len(self.initiative_order) * ship_spacing
+        start_x = (self.screen_width - total_width) // 2 + ship_spacing // 2
+        
+        # Draw background panel for tracker
+        panel_height = 80
+        panel_rect = pygame.Rect(start_x - 60, tracker_y - 40, total_width, panel_height)
+        pygame.draw.rect(self.screen, LCARS_COLORS['bg_medium'], panel_rect)
+        pygame.draw.rect(self.screen, get_accent_color(), panel_rect, 2)
+        
+        # Get current acting ship
+        current_ship = self.get_current_acting_ship()
+        
+        # Draw each ship in initiative order
+        for idx, ship in enumerate(self.initiative_order):
+            x = start_x + (idx * ship_spacing)
+            y = tracker_y
+            
+            # Determine faction and colors
+            faction = getattr(ship, 'faction', 'neutral')
+            if faction == 'friendly':
+                glow_color = LCARS_COLORS['blue']
+                border_color = LCARS_COLORS['green']
+            elif faction == 'enemy':
+                glow_color = LCARS_COLORS['alert_red']
+                border_color = LCARS_COLORS['alert_red']
+            else:
+                glow_color = (255, 255, 255)  # White for neutral
+                border_color = LCARS_COLORS['light_blue']
+            
+            # Draw glow effect if this is the active ship
+            if ship == current_ship:
+                glow_radius = ship_icon_size // 2 + 15
+                # Draw multiple circles with decreasing alpha for glow effect
+                for i in range(5):
+                    alpha = 255 - (i * 40)
+                    radius = glow_radius - (i * 3)
+                    glow_surface = pygame.Surface((radius * 2 + 10, radius * 2 + 10), pygame.SRCALPHA)
+                    pygame.draw.circle(glow_surface, (*glow_color, alpha), (radius + 5, radius + 5), radius, 3)
+                    glow_rect = glow_surface.get_rect(center=(x, y))
+                    self.screen.blit(glow_surface, glow_rect)
+            
+            # Draw ship sprite (scaled down for tracker)
+            try:
+                # Get ship sprite with facing 0 (standardized orientation for tracker)
+                if ship.ship_class in self.ship_sprite_cache:
+                    # Use a small scale factor for the tracker
+                    tracker_scale = 0.4  # Even smaller for tracker
+                    
+                    # Try to get cached sprite at tracker scale
+                    if tracker_scale in self.ship_sprite_cache[ship.ship_class]:
+                        ship_sprite = self.ship_sprite_cache[ship.ship_class][tracker_scale][0]
+                    else:
+                        # Scale from existing cached sprite
+                        if 1.0 in self.ship_sprite_cache[ship.ship_class]:
+                            base_sprite = self.ship_sprite_cache[ship.ship_class][1.0][0]
+                        else:
+                            # Get any available scale
+                            available_scale = list(self.ship_sprite_cache[ship.ship_class].keys())[0]
+                            base_sprite = self.ship_sprite_cache[ship.ship_class][available_scale][0]
+                        
+                        # Scale down to tracker size
+                        sprite_width = int(base_sprite.get_width() * tracker_scale)
+                        sprite_height = int(base_sprite.get_height() * tracker_scale)
+                        ship_sprite = pygame.transform.smoothscale(base_sprite, (sprite_width, sprite_height))
+                else:
+                    # No sprite cached, create a simple placeholder
+                    ship_sprite = pygame.Surface((ship_icon_size, ship_icon_size), pygame.SRCALPHA)
+                    pygame.draw.circle(ship_sprite, border_color, (ship_icon_size // 2, ship_icon_size // 2), ship_icon_size // 3)
+                
+                # Draw the sprite
+                sprite_rect = ship_sprite.get_rect(center=(x, y))
+                self.screen.blit(ship_sprite, sprite_rect)
+                
+            except Exception as e:
+                # Fallback: draw a simple circle if sprite fails
+                pygame.draw.circle(self.screen, border_color, (x, y), ship_icon_size // 3, 2)
+            
+            # Draw border around ship icon
+            if ship == current_ship:
+                # Thicker border for active ship
+                pygame.draw.circle(self.screen, border_color, (x, y), ship_icon_size // 2 + 5, 4)
+            else:
+                # Regular border
+                pygame.draw.circle(self.screen, border_color, (x, y), ship_icon_size // 2 + 5, 2)
+            
+            # Draw ship name below icon (truncated if too long)
+            name_text = ship.name if len(ship.name) <= 12 else ship.name[:10] + "..."
+            name_surface = self.font_tiny.render(name_text, True, border_color)
+            name_rect = name_surface.get_rect(center=(x, y + 35))
+            self.screen.blit(name_surface, name_rect)
+            
+            # Draw initiative value if ship has one
+            if hasattr(ship, 'initiative'):
+                init_text = f"{ship.initiative}"
+                init_surface = self.font_tiny.render(init_text, True, LCARS_COLORS['text_gray'])
+                init_rect = init_surface.get_rect(center=(x, y + 50))
+                self.screen.blit(init_surface, init_rect)
         
     def _draw_arena_grid(self):
         """Draw hexagonal grid in the arena"""
@@ -3180,6 +3291,38 @@ class CombatTestScreen:
             ship.position = self.hex_grid.axial_to_pixel(ship.hex_q, ship.hex_r)
         
         x, y = ship.position
+        
+        # Check if this is the currently active ship
+        current_ship = self.get_current_acting_ship()
+        is_active = (ship == current_ship)
+        
+        # Draw glow effect around active ship
+        if is_active:
+            # Determine glow color based on faction
+            faction = getattr(ship, 'faction', 'neutral')
+            if faction == 'friendly':
+                glow_color = LCARS_COLORS['blue']  # Blue for friendly
+            elif faction == 'enemy':
+                glow_color = LCARS_COLORS['alert_red']  # Red for hostile
+            else:
+                glow_color = (255, 255, 255)  # White for neutral
+            
+            # Draw animated pulsing glow effect
+            # Use time to create pulsing animation
+            pulse = (pygame.time.get_ticks() % 2000) / 2000.0  # 0.0 to 1.0 over 2 seconds
+            pulse_size = 10 + int(10 * math.sin(pulse * math.pi * 2))  # Oscillate between 10 and 20
+            
+            # Draw multiple layers of circles for glow effect
+            for i in range(6):
+                alpha = 200 - (i * 30)  # Decreasing opacity
+                radius = 60 + pulse_size - (i * 8)  # Decreasing radius
+                
+                # Create a surface for the glow circle with alpha
+                glow_surface = pygame.Surface((radius * 2 + 20, radius * 2 + 20), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surface, (*glow_color, alpha), (radius + 10, radius + 10), radius, 4)
+                
+                glow_rect = glow_surface.get_rect(center=(int(x), int(y)))
+                self.screen.blit(glow_surface, glow_rect)
         
         # Use animated facing if available, otherwise use discrete facing
         if hasattr(ship, '_anim_facing') and ship._anim_facing is not None:

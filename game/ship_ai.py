@@ -1,381 +1,519 @@
 """
-Basic AI controller for computer-controlled ships in combat.
-Provides simple but effective tactical decision-making.
+Advanced AI Controller for Computer-Controlled Ships in Combat
+
+This module provides intelligent AI behavior for ships in tactical combat,
+including movement, targeting, firing decisions, and shield management.
+
+Features:
+- Robust error handling with detailed logging
+- Multiple AI personalities (Aggressive, Defensive, Balanced, Sniper)
+- Intelligent target selection based on threat assessment
+- Tactical movement with range management
+- Shield rotation to protect weak facings
+- Weapon firing decisions based on arc and range
+- Multi-enemy support
+
+Author: Rewritten for robustness and clarity
+Date: November 5, 2025
 """
 
 import random
+import math
+from game.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ShipAI:
-    """Basic AI controller for ships in combat"""
+    """
+    Advanced AI controller for ships in tactical combat
+    
+    This AI makes intelligent decisions about movement, targeting, and firing
+    while handling edge cases and errors gracefully.
+    """
     
     def __init__(self, ship, hex_grid):
         """
-        Initialize AI controller
+        Initialize AI controller with required components
         
         Args:
-            ship: The AdvancedShip this AI controls
-            hex_grid: HexGrid instance for navigation
+            ship: The AdvancedShip instance this AI controls
+            hex_grid: HexGrid instance for navigation calculations
+            
+        Raises:
+            ValueError: If ship or hex_grid is invalid
         """
+        # Validate inputs
+        if not ship:
+            logger.error("ShipAI: Cannot initialize with None ship")
+            raise ValueError("ShipAI requires a valid ship object")
+        if not hex_grid:
+            logger.error("ShipAI: Cannot initialize with None hex_grid")
+            raise ValueError("ShipAI requires a valid hex_grid object")
+        
+        # Store references
         self.ship = ship
         self.hex_grid = hex_grid
         self.target = None
-        self.preferred_range = 6  # Medium range - balanced
-        self.aggressive = True  # Will close to optimal range
-        self.all_ships = []  # Will be set by combat screen
+        self.all_ships = []  # List of all ships in combat
         
+        # AI Personality Settings (can be modified by AIPersonality.apply_to_ai)
+        self.preferred_range = 6  # Optimal range to maintain (hexes)
+        self.aggressive = True  # Will close to optimal range
+        self.retreat_threshold = 0.3  # Retreat when hull drops below this %
+        
+        # Tactical state
+        self.last_target_arc = None
+        self.turns_at_optimal_range = 0
+        self.retreat_mode = False
+        
+        logger.info(f"AI initialized for {ship.name} ({ship.ship_class}-class)")
+        
+        # Verify ship has required hex coordinates
+        if not hasattr(ship, 'hex_q'):
+            logger.warning(f"{ship.name}: Missing hex_q, setting to 0")
+            ship.hex_q = 0
+        if not hasattr(ship, 'hex_r'):
+            logger.warning(f"{ship.name}: Missing hex_r, setting to 0")
+            ship.hex_r = 0
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # TARGET SELECTION
+    # ═══════════════════════════════════════════════════════════════════
+    
     def set_target(self, target_ship):
-        """Set the target ship to engage"""
+        """
+        Manually set the target ship to engage
+        
+        Args:
+            target_ship: Ship to target, or None to clear target
+        """
+        if target_ship:
+            logger.info(f"{self.ship.name}: Target set to {target_ship.name}")
+        else:
+            logger.info(f"{self.ship.name}: Target cleared")
         self.target = target_ship
     
     def select_best_target(self, all_ships):
         """
-        Intelligently select the best target from available enemy ships
+        Intelligently select the best enemy target from available ships
+        
+        Uses threat assessment based on:
+        - Distance (prefer closer targets)
+        - Hull integrity (prefer damaged targets)
+        - Firepower (prefer armed threats)
+        - Faction (must be enemy)
         
         Args:
             all_ships: List of all ships in combat
             
         Returns:
-            Ship object or None
+            Ship object or None if no valid targets
         """
-        self.all_ships = all_ships
-        
-        # Get this ship's faction
-        my_faction = getattr(self.ship, 'faction', 'neutral')
-        
-        # Find all valid enemy targets (different faction, still alive)
-        valid_targets = []
-        for ship in all_ships:
-            if ship == self.ship:
-                continue
+        try:
+            if not all_ships:
+                logger.warning(f"{self.ship.name}: No ships list provided for targeting")
+                return None
             
-            # Check if ship is alive
-            if ship.hull <= 0:
-                continue
+            self.all_ships = all_ships
             
-            # Check faction
-            ship_faction = getattr(ship, 'faction', 'neutral')
+            # Get this ship's faction
+            my_faction = getattr(self.ship, 'faction', 'neutral')
             
-            # Don't attack ships of same faction
-            if ship_faction == my_faction:
-                continue
+            # Find all valid enemy targets
+            valid_targets = []
+            for ship in all_ships:
+                # Skip self
+                if ship == self.ship:
+                    continue
+                
+                # Skip dead ships
+                if not hasattr(ship, 'hull') or ship.hull <= 0:
+                    continue
+                
+                # Check faction
+                ship_faction = getattr(ship, 'faction', 'neutral')
+                
+                # Don't attack ships of same faction
+                if ship_faction == my_faction:
+                    continue
+                
+                # Don't attack neutral unless we're hostile
+                if ship_faction == 'neutral' and my_faction != 'hostile':
+                    continue
+                
+                valid_targets.append(ship)
             
-            # Don't attack neutral unless we're hostile
-            if ship_faction == 'neutral' and my_faction != 'hostile':
-                continue
+            if not valid_targets:
+                logger.debug(f"{self.ship.name}: No valid enemy targets found")
+                return None
             
-            valid_targets.append(ship)
-        
-        if not valid_targets:
+            # Score each target
+            best_target = None
+            best_score = -999999
+            
+            for target in valid_targets:
+                score = self._calculate_target_priority(target)
+                
+                if score > best_score:
+                    best_score = score
+                    best_target = target
+            
+            if best_target:
+                logger.info(f"{self.ship.name}: Selected target {best_target.name} (score: {best_score:.1f})")
+            
+            return best_target
+            
+        except Exception as e:
+            logger.error(f"{self.ship.name}: Error selecting target: {e}")
             return None
+    
+    def _calculate_target_priority(self, target):
+        """
+        Calculate priority score for a potential target
         
-        # Select target based on distance and threat level
-        best_target = None
-        best_score = -999999
-        
-        for target in valid_targets:
-            # Calculate distance
+        Args:
+            target: Ship to evaluate
+            
+        Returns:
+            float: Priority score (higher = better target)
+        """
+        try:
+            score = 0.0
+            
+            # Verify both ships have coordinates
+            if not all(hasattr(self.ship, attr) for attr in ['hex_q', 'hex_r']):
+                logger.warning(f"{self.ship.name}: Missing hex coordinates for distance calc")
+                return score
+            
+            if not all(hasattr(target, attr) for attr in ['hex_q', 'hex_r']):
+                logger.warning(f"{target.name}: Missing hex coordinates for distance calc")
+                return score
+            
+            # 1. Distance scoring (closer is better)
             distance = self.hex_grid.distance(
                 self.ship.hex_q, self.ship.hex_r,
                 target.hex_q, target.hex_r
             )
+            # Score: 0 to -30 based on distance (0 = same hex, -30 = 30+ hexes away)
+            distance_score = -min(distance, 30)
+            score += distance_score
             
-            # Score based on:
-            # - Distance (prefer closer targets)
-            # - Damage potential (prefer weaker targets)
-            # - Threat level (prefer armed targets)
+            # 2. Damage potential (prefer weakened targets)
+            if hasattr(target, 'hull') and hasattr(target, 'max_hull') and target.max_hull > 0:
+                hull_percent = target.hull / target.max_hull
+                # Score: 0 to +50 based on damage (50 = nearly dead, 0 = full health)
+                damage_score = (1.0 - hull_percent) * 50
+                score += damage_score
             
-            distance_score = -distance  # Negative because closer is better
+            # 3. Threat level (prefer armed targets)
+            weapon_count = 0
+            if hasattr(target, 'weapon_arrays'):
+                weapon_count += len(target.weapon_arrays)
+            if hasattr(target, 'torpedo_bays'):
+                weapon_count += len(target.torpedo_bays)
+            # Score: 0 to +20 based on weapons (more weapons = higher priority)
+            threat_score = min(weapon_count * 5, 20)
+            score += threat_score
             
-            # Hull percentage (prefer damaged targets)
-            hull_percent = target.hull / target.max_hull
-            damage_score = (1.0 - hull_percent) * 50  # Up to +50 for nearly dead
+            # 4. Current target bonus (prefer to keep current target)
+            if target == self.target:
+                score += 25
             
-            # Weapon count (prefer armed targets)
-            weapon_count = len(target.weapon_arrays) + len(target.torpedo_bays)
-            threat_score = weapon_count * 10
+            return score
             
-            total_score = distance_score + damage_score + threat_score
-            
-            if total_score > best_score:
-                best_score = total_score
-                best_target = target
-        
-        return best_target
+        except Exception as e:
+            logger.error(f"{self.ship.name}: Error calculating target priority: {e}")
+            return 0.0
     
     def update_target(self, all_ships):
         """
-        Re-evaluate target selection if current target is invalid
+        Re-evaluate target selection if current target is invalid or dead
+        
+        This is called at the start of each phase to ensure the AI has a valid target.
         
         Args:
             all_ships: List of all ships in combat
         """
-        # If no target or target is dead, select new target
-        if not self.target or self.target.hull <= 0:
-            self.target = self.select_best_target(all_ships)
-            return
-        
-        # Check if current target is still a valid enemy
-        my_faction = getattr(self.ship, 'faction', 'neutral')
-        target_faction = getattr(self.target, 'faction', 'neutral')
-        
-        # If targeting friendly ship, switch targets immediately
-        if my_faction == target_faction:
-            self.target = self.select_best_target(all_ships)
-            return
-        
+        try:
+            self.all_ships = all_ships
+            
+            # Check if current target is valid
+            target_valid = (
+                self.target is not None
+                and hasattr(self.target, 'hull')
+                and self.target.hull > 0
+            )
+            
+            # Check if current target is still an enemy
+            if target_valid:
+                my_faction = getattr(self.ship, 'faction', 'neutral')
+                target_faction = getattr(self.target, 'faction', 'neutral')
+                
+                if my_faction == target_faction:
+                    logger.info(f"{self.ship.name}: Current target {self.target.name} is now friendly")
+                    target_valid = False
+            
+            # Select new target if needed
+            if not target_valid:
+                old_target = self.target.name if self.target else "None"
+                self.target = self.select_best_target(all_ships)
+                if self.target:
+                    logger.info(f"{self.ship.name}: Target changed from {old_target} to {self.target.name}")
+                else:
+                    logger.warning(f"{self.ship.name}: No valid targets available")
+                    
+        except Exception as e:
+            logger.error(f"{self.ship.name}: Error updating target: {e}")
+            self.target = None
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # MOVEMENT AI
+    # ═══════════════════════════════════════════════════════════════════
+    
     def decide_movement(self, movement_points):
         """
-        Decide how to move this turn with sophisticated tactical AI
+        Decide movement actions for this turn based on tactical situation
         
+        Movement priorities:
+        1. Retreat if hull is critical
+        2. Rotate shields if current facing is weak
+        3. Turn to bring weapons on target
+        4. Maneuver to optimal range
+        5. Tactical positioning at optimal range
+        
+        Args:
+            movement_points: Number of movement points available this turn
+            
         Returns:
-            list: List of movement commands ['forward', 'turn_left', etc.]
+            list: List of movement commands ['forward', 'backward', 'turn_left', 'turn_right']
         """
-        if not self.target:
+        try:
+            # Validate inputs
+            if movement_points is None or movement_points <= 0:
+                logger.debug(f"{self.ship.name}: No movement points available")
+                return []
+            
+            if not self.target:
+                logger.debug(f"{self.ship.name}: No target for movement decision")
+                return []
+            
+            # Verify required attributes exist
+            required_attrs = ['hex_q', 'hex_r', 'facing', 'hull', 'max_hull']
+            for attr in required_attrs:
+                if not hasattr(self.ship, attr):
+                    logger.error(f"{self.ship.name}: Missing required attribute '{attr}'")
+                    return []
+            
+            # Verify target has coordinates
+            if not hasattr(self.target, 'hex_q') or not hasattr(self.target, 'hex_r'):
+                logger.error(f"{self.ship.name}: Target {self.target.name} missing hex coordinates")
+                return []
+            
+            logger.info(f"{self.ship.name}: Deciding movement ({movement_points} MP available)")
+            
+            # Calculate current tactical situation
+            distance = self.hex_grid.distance(
+                self.ship.hex_q, self.ship.hex_r,
+                self.target.hex_q, self.target.hex_r
+            )
+            
+            target_arc = self.ship.get_target_arc(self.target.hex_q, self.target.hex_r)
+            hull_percent = self.ship.hull / max(self.ship.max_hull, 1)
+            
+            logger.info(f"  Distance: {distance}, Arc: {target_arc}, Hull: {hull_percent:.1%}")
+            
+            # Determine retreat status
+            if hull_percent < self.retreat_threshold:
+                self.retreat_mode = True
+            elif hull_percent > (self.retreat_threshold + 0.2):  # Hysteresis
+                self.retreat_mode = False
+            
+            # Execute movement strategy
+            moves = []
+            remaining_mp = movement_points
+            
+            # PRIORITY 1: Retreat if critically damaged
+            if self.retreat_mode:
+                logger.info(f"{self.ship.name}: RETREAT MODE (hull {hull_percent:.1%})")
+                moves = self._plan_retreat_movement(remaining_mp, target_arc)
+                return moves
+            
+            # PRIORITY 2: Shield rotation if shields are weak
+            shield_rotation = self._should_rotate_shields(target_arc)
+            if shield_rotation['should_rotate'] and remaining_mp >= 2:
+                logger.info(f"{self.ship.name}: {shield_rotation['reason']}")
+                moves.append('forward')
+                moves.append(shield_rotation['direction'])
+                remaining_mp -= 2
+                
+                # Return after shield rotation to avoid overcomplicating
+                if remaining_mp == 0:
+                    return moves
+            
+            # PRIORITY 3: Get weapons on target if not in arc
+            weapons_in_arc = self._check_weapons_in_arc(target_arc)
+            if not weapons_in_arc and remaining_mp >= 2:
+                logger.info(f"{self.ship.name}: Turning to bring weapons on target")
+                turn_dir = self._determine_turn_direction()
+                if turn_dir:
+                    moves.append('forward')
+                    moves.append(turn_dir)
+                    remaining_mp -= 2
+            
+            # PRIORITY 4: Range management
+            range_diff = distance - self.preferred_range
+            
+            if abs(range_diff) > 2:  # Out of optimal range (more than 2 hexes off)
+                if range_diff > 0 and self.aggressive:
+                    # Too far, close in
+                    logger.info(f"{self.ship.name}: Closing to optimal range")
+                    steps = min(remaining_mp, max(1, abs(range_diff) // 2))
+                    for _ in range(steps):
+                        moves.append('forward')
+                        remaining_mp -= 1
+                elif range_diff < 0:
+                    # Too close, back off
+                    logger.info(f"{self.ship.name}: Backing to optimal range")
+                    steps = min(remaining_mp, max(1, abs(range_diff) // 2))
+                    for _ in range(steps):
+                        moves.append('backward')
+                        remaining_mp -= 1
+            
+            # PRIORITY 5: Tactical maneuvering at optimal range
+            elif remaining_mp >= 1:
+                # At good range, make sure we're maneuvering
+                if remaining_mp >= 2 and random.random() < 0.4:  # 40% chance for evasive turn
+                    logger.info(f"{self.ship.name}: Evasive maneuvers")
+                    moves.append('forward')
+                    turn_choice = random.choice(['turn_left', 'turn_right'])
+                    moves.append(turn_choice)
+                    remaining_mp -= 2
+                elif weapons_in_arc:
+                    # We're in good position, maybe just advance
+                    if remaining_mp >= 1:
+                        logger.info(f"{self.ship.name}: Maintaining position")
+                        moves.append('forward')
+                        remaining_mp -= 1
+            
+            logger.info(f"{self.ship.name}: Planned moves: {moves}")
+            return moves
+            
+        except Exception as e:
+            logger.error(f"{self.ship.name}: Error in decide_movement: {e}")
+            import traceback
+            traceback.print_exc()
             return []
+    
+    def _plan_retreat_movement(self, movement_points, target_arc):
+        """
+        Plan movement for retreat (backing away while keeping weapons on target)
         
+        Args:
+            movement_points: Available movement points
+            target_arc: Current arc where target is located
+            
+        Returns:
+            list: Movement commands
+        """
         moves = []
-        remaining_mp = movement_points
+        remaining = movement_points
         
-        # Calculate current distance to target
-        distance = self.hex_grid.distance(
-            self.ship.hex_q, self.ship.hex_r,
-            self.target.hex_q, self.target.hex_r
-        )
-        
-        # Get target arc
-        target_arc = self.ship.get_target_arc(self.target.hex_q, self.target.hex_r)
-        
-        # Determine strategy based on situation
-        hull_percent = self.ship.hull / self.ship.max_hull
-        retreat_threshold = getattr(self, 'retreat_threshold', 0.3)
-        
-        # Check shield status
-        shield_percent = 0
-        if hasattr(self.ship, 'shields') and hasattr(self.ship, 'max_shields'):
-            total_shields = sum(self.ship.shields.values())
-            max_total_shields = sum(self.ship.max_shields.values())
-            if max_total_shields > 0:
-                shield_percent = total_shields / max_total_shields
-        
-        # If badly damaged and shields down, try to evade
-        if hull_percent < retreat_threshold or (hull_percent < 0.5 and shield_percent < 0.2):
-            self.aggressive = False
-            # Try to back away while keeping weapons on target
-            if remaining_mp >= 1:
-                # Check if weapons still in arc
-                weapons_in_arc = self._check_weapons_in_arc(target_arc)
-                if weapons_in_arc:
-                    # Back away while maintaining firing solution
-                    moves.append('backward')
-                    remaining_mp -= 1
-                return moves
-        
-        # Check if target is in arc for any weapons
+        # Try to keep weapons on target while retreating
         weapons_in_arc = self._check_weapons_in_arc(target_arc)
-        best_weapon_arcs = self._get_best_weapon_arcs()
         
-        # Check if we should rotate shields (PRIORITY CHECK)
-        should_rotate, rotate_direction, rotate_reason = self._should_rotate_shields(target_arc)
-        
-        # Priority 0: Shield rotation if shields are critically weak and we have strong shields available
-        if should_rotate and rotate_direction and remaining_mp >= 2:
-            # Check if we can afford to rotate (have weapons in arc or will after rotation)
-            arc_shields = self._get_shield_strength_by_arc()
-            current_shield_percent = arc_shields.get(target_arc, 0) / max(self.ship.max_shields.get(self._arc_to_shield_facing(target_arc), 1), 1)
-            
-            # Only rotate if shields are critically weak (<30%) or if we're maintaining weapons on target
-            if current_shield_percent < 0.3 or weapons_in_arc:
-                # Perform shield rotation maneuver
-                moves.append('forward')
-                remaining_mp -= 1
-                moves.append(rotate_direction)
-                remaining_mp -= 1
-                
-                # Log reason for tactical awareness
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"{self.ship.name}: {rotate_reason}")
-                
-                return moves
-        
-        # Priority 1: Get weapons on target if not in arc
-        if not weapons_in_arc and remaining_mp >= 2:
-            # Determine which way to turn to face target
-            turn_direction = self._determine_turn_direction()
-            
-            if turn_direction:
-                # Move forward first (required for turning in most systems)
-                moves.append('forward')
-                remaining_mp -= 1
-                
-                # Then turn toward target
-                moves.append(turn_direction)
-                remaining_mp -= 1
-                
-                # If still have MP and need more turning, keep maneuvering
-                if remaining_mp >= 2:
-                    # Check if we need another turn (target more than 60° off)
-                    import math
-                    dx = self.target.position[0] - self.ship.position[0]
-                    dy = self.target.position[1] - self.ship.position[1]
-                    angle_to_target = math.degrees(math.atan2(dy, dx))
-                    if angle_to_target < 0:
-                        angle_to_target += 360
-                    
-                    # Predict facing after one turn
-                    new_facing = (self.ship.facing + (1 if turn_direction == 'turn_right' else -1)) % 6
-                    new_angle = 90 + (new_facing * 60)
-                    new_angle = new_angle % 360
-                    
-                    diff = angle_to_target - new_angle
-                    if diff > 180:
-                        diff -= 360
-                    elif diff < -180:
-                        diff += 360
-                    
-                    # If still significantly off, do another turn
-                    if abs(diff) > 45:
-                        moves.append('forward')
-                        remaining_mp -= 1
-                        moves.append(turn_direction)
-                        remaining_mp -= 1
-        
-        # Priority 2: Optimal range management
-        elif distance > self.preferred_range + 3 and self.aggressive:
-            # Too far, close in aggressively
-            moves_to_make = min(remaining_mp, distance - self.preferred_range)
-            for _ in range(moves_to_make):
-                if remaining_mp >= 1:
-                    moves.append('forward')
-                    remaining_mp -= 1
-                    
-        elif distance < self.preferred_range - 3:
-            # Too close, back off while maintaining weapons on target
-            moves_to_make = min(remaining_mp, self.preferred_range - distance)
-            for _ in range(moves_to_make):
-                if remaining_mp >= 1:
-                    moves.append('backward')
-                    remaining_mp -= 1
-                    
-        elif distance > self.preferred_range + 1 and self.aggressive:
-            # Slightly far, close in a bit
-            if remaining_mp >= 1:
-                moves.append('forward')
-                remaining_mp -= 1
-                
-        elif distance < self.preferred_range - 1:
-            # Slightly close, back off a bit
-            if remaining_mp >= 1:
+        if weapons_in_arc and remaining >= 1:
+            # Back away while maintaining firing solution
+            steps = min(remaining, 2)
+            for _ in range(steps):
                 moves.append('backward')
-                remaining_mp -= 1
-        
-        # Priority 3: Tactical maneuvering at optimal range
-        else:
-            # At good range, perform tactical maneuvers
-            if remaining_mp >= 2:
-                # Check shield status - if weak, consider rotating even with weapons on target
-                arc_shields = self._get_shield_strength_by_arc()
-                current_shield = arc_shields.get(target_arc, 0)
-                max_shield = self.ship.max_shields.get(self._arc_to_shield_facing(target_arc), 1) if hasattr(self.ship, 'max_shields') else 1
-                current_shield_percent = current_shield / max(max_shield, 1)
-                
-                # If shields are getting weak (<50%) and we have stronger shields, rotate
-                if current_shield_percent < 0.5 and should_rotate and rotate_direction:
-                    if random.random() < 0.5:  # 50% chance to prioritize shields over pure offense
-                        moves.append('forward')
-                        remaining_mp -= 1
-                        moves.append(rotate_direction)
-                        remaining_mp -= 1
-                        return moves
-                
-                # Check if we should reposition to bring more weapons to bear
-                if 'fore' in best_weapon_arcs and target_arc != 'fore':
-                    # Try to turn to bring forward weapons to bear
-                    turn_direction = self._determine_turn_direction()
-                    if turn_direction and random.random() < 0.6:  # 60% chance
-                        moves.append('forward')
-                        remaining_mp -= 1
-                        moves.append(turn_direction)
-                        remaining_mp -= 1
-                elif remaining_mp >= 2 and random.random() < 0.4:  # 40% chance for evasive maneuvers
-                    # Evasive action - move and turn for unpredictability
-                    moves.append('forward')
-                    remaining_mp -= 1
-                    
-                    # Turn in semi-random direction (weighted toward target)
-                    if random.random() < 0.7:
-                        # Turn toward target
-                        turn_direction = self._determine_turn_direction()
-                        if turn_direction:
-                            moves.append(turn_direction)
-                    else:
-                        # Turn away (evasive)
-                        if random.random() < 0.5:
-                            moves.append('turn_left')
-                        else:
-                            moves.append('turn_right')
-                    remaining_mp -= 1
+                remaining -= 1
+        elif remaining >= 2:
+            # Turn to bring weapons to bear, then retreat
+            turn_dir = self._determine_turn_direction()
+            if turn_dir:
+                moves.append('forward')
+                moves.append(turn_dir)
+                remaining -= 2
         
         return moves
     
     def _check_weapons_in_arc(self, target_arc):
-        """Check if any weapons can fire at target arc"""
-        for weapon in self.ship.weapon_arrays:
-            if target_arc in weapon.firing_arcs:
-                return True
-        for torpedo in self.ship.torpedo_bays:
-            if target_arc in torpedo.firing_arcs:
-                return True
-        return False
-    
-    def _get_best_weapon_arcs(self):
-        """Get arcs where we have the most/best weapons"""
-        arc_scores = {}
-        
-        for weapon in self.ship.weapon_arrays:
-            for arc in weapon.firing_arcs:
-                if arc not in arc_scores:
-                    arc_scores[arc] = 0
-                arc_scores[arc] += weapon.get_damage()
-        
-        for torpedo in self.ship.torpedo_bays:
-            for arc in torpedo.firing_arcs:
-                if arc not in arc_scores:
-                    arc_scores[arc] = 0
-                arc_scores[arc] += torpedo.get_damage() * 0.8  # Torpedoes weighted slightly less
-        
-        # Return arcs sorted by firepower
-        return sorted(arc_scores.keys(), key=lambda a: arc_scores[a], reverse=True)
-    
-    def _get_shield_strength_by_arc(self):
         """
-        Get current shield strength for each arc
+        Check if any weapons can fire at the target arc
+        
+        Args:
+            target_arc: Arc to check ('fore', 'aft', 'port-fore', etc.)
+            
+        Returns:
+            bool: True if at least one weapon can fire at this arc
+        """
+        try:
+            if not target_arc:
+                return False
+            
+            # Check energy weapons
+            if hasattr(self.ship, 'weapon_arrays'):
+                for weapon in self.ship.weapon_arrays:
+                    if hasattr(weapon, 'firing_arcs') and target_arc in weapon.firing_arcs:
+                        return True
+            
+            # Check torpedo bays
+            if hasattr(self.ship, 'torpedo_bays'):
+                for torpedo in self.ship.torpedo_bays:
+                    if hasattr(torpedo, 'firing_arcs') and target_arc in torpedo.firing_arcs:
+                        return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"{self.ship.name}: Error checking weapons in arc: {e}")
+            return False
+    
+    def _determine_turn_direction(self):
+        """
+        Determine which direction to turn to face target
         
         Returns:
-            dict: {arc: shield_value}
+            str: 'turn_left' or 'turn_right' or None
         """
-        if not hasattr(self.ship, 'shields'):
-            return {}
-        
-        shields = self.ship.shields
-        
-        # Map shield facings to hex arcs
-        # Fore shield covers fore arc
-        # Aft shield covers aft arc
-        # Port shield covers port-fore and port-aft
-        # Starboard shield covers starboard-fore and starboard-aft
-        
-        arc_shields = {
-            'fore': shields.get('fore', 0),
-            'aft': shields.get('aft', 0),
-            'port-fore': shields.get('port', 0),
-            'port-aft': shields.get('port', 0),
-            'starboard-fore': shields.get('starboard', 0),
-            'starboard-aft': shields.get('starboard', 0)
-        }
-        
-        return arc_shields
+        try:
+            if not self.target:
+                return None
+            
+            # Calculate angle to target
+            dx = self.target.position[0] - self.ship.position[0]
+            dy = self.target.position[1] - self.ship.position[1]
+            angle_to_target = math.degrees(math.atan2(dy, dx))
+            
+            # Normalize to 0-360
+            if angle_to_target < 0:
+                angle_to_target += 360
+            
+            # Current facing angle (facing 0 = 90°, each facing is 60° clockwise)
+            current_angle = 90 + (self.ship.facing * 60)
+            current_angle = current_angle % 360
+            
+            # Calculate angular difference
+            diff = angle_to_target - current_angle
+            
+            # Normalize to -180 to 180
+            if diff > 180:
+                diff -= 360
+            elif diff < -180:
+                diff += 360
+            
+            # Determine turn direction
+            if abs(diff) < 30:  # Already facing roughly correct direction
+                return None
+            elif diff > 0:
+                return 'turn_right'  # Target is clockwise
+            else:
+                return 'turn_left'  # Target is counter-clockwise
+                
+        except Exception as e:
+            logger.error(f"{self.ship.name}: Error determining turn direction: {e}")
+            return None
     
     def _should_rotate_shields(self, target_arc):
         """
@@ -385,52 +523,61 @@ class ShipAI:
             target_arc: Arc where the target is located
             
         Returns:
-            tuple: (should_rotate: bool, direction: str or None, reason: str)
+            dict: {'should_rotate': bool, 'direction': str or None, 'reason': str}
         """
-        if not hasattr(self.ship, 'shields') or not hasattr(self.ship, 'max_shields'):
-            return (False, None, "No shields")
-        
-        arc_shields = self._get_shield_strength_by_arc()
-        current_shield = arc_shields.get(target_arc, 0)
-        max_shield_this_arc = self.ship.max_shields.get(self._arc_to_shield_facing(target_arc), 1)
-        
-        if max_shield_this_arc <= 0:
-            return (False, None, "No max shield")
-        
-        current_percent = current_shield / max_shield_this_arc
-        
-        # If current shield facing is strong (>60%), don't rotate
-        if current_percent > 0.6:
-            return (False, None, "Current shields strong")
-        
-        # If current shield is weak (<40%), consider rotating
-        if current_percent < 0.4:
-            # Find the strongest shield
-            strongest_facing = None
-            strongest_value = 0
-            strongest_percent = 0
+        try:
+            result = {'should_rotate': False, 'direction': None, 'reason': ''}
             
-            for facing, value in self.ship.shields.items():
-                max_val = self.ship.max_shields.get(facing, 1)
-                if max_val > 0:
-                    percent = value / max_val
-                    if value > strongest_value and percent > strongest_percent:
-                        strongest_facing = facing
-                        strongest_value = value
-                        strongest_percent = percent
+            if not hasattr(self.ship, 'shields') or not hasattr(self.ship, 'max_shields'):
+                result['reason'] = "No shield system"
+                return result
             
-            # If we found a much stronger shield (20%+ better), rotate to it
-            if strongest_facing and strongest_percent > current_percent + 0.2:
-                # Determine which way to turn to present that shield to target
-                target_facing = self._shield_facing_to_arc(strongest_facing)
+            # Get shield strength for current facing
+            shield_facing = self._arc_to_shield_facing(target_arc)
+            current_shield = self.ship.shields.get(shield_facing, 0)
+            max_shield = self.ship.max_shields.get(shield_facing, 1)
+            
+            if max_shield <= 0:
+                result['reason'] = "No max shield"
+                return result
+            
+            current_percent = current_shield / max_shield
+            
+            # If current shield is strong (>60%), don't rotate
+            if current_percent > 0.6:
+                result['reason'] = f"Current {shield_facing} shields strong ({current_percent:.1%})"
+                return result
+            
+            # If current shield is weak (<40%), consider rotating
+            if current_percent < 0.4:
+                # Find the strongest shield
+                strongest_facing = None
+                strongest_percent = 0
                 
-                if target_facing:
-                    # Calculate turn direction needed
-                    turn_dir = self._calculate_turn_to_present_arc(target_arc, target_facing)
-                    if turn_dir:
-                        return (True, turn_dir, f"Rotate {strongest_facing} shield ({int(strongest_percent*100)}%) to threat")
-        
-        return (False, None, "No rotation needed")
+                for facing, value in self.ship.shields.items():
+                    max_val = self.ship.max_shields.get(facing, 1)
+                    if max_val > 0:
+                        percent = value / max_val
+                        if percent > strongest_percent:
+                            strongest_facing = facing
+                            strongest_percent = percent
+                
+                # If we found a much stronger shield (20%+ better), rotate to it
+                if strongest_facing and strongest_percent > (current_percent + 0.2):
+                    # Determine which way to turn to present that shield to target
+                    turn_dir = self._calculate_turn_to_present_shield(target_arc, strongest_facing)
+                    
+                    result['should_rotate'] = True
+                    result['direction'] = turn_dir
+                    result['reason'] = f"Rotating {strongest_facing} shield ({strongest_percent:.1%}) to threat"
+                    return result
+            
+            result['reason'] = "No shield rotation needed"
+            return result
+            
+        except Exception as e:
+            logger.error(f"{self.ship.name}: Error checking shield rotation: {e}")
+            return {'should_rotate': False, 'direction': None, 'reason': 'Error'}
     
     def _arc_to_shield_facing(self, arc):
         """Convert target arc to shield facing"""
@@ -444,27 +591,27 @@ class ShipAI:
         }
         return arc_map.get(arc, 'fore')
     
-    def _shield_facing_to_arc(self, facing):
-        """Convert shield facing to best arc to present"""
-        facing_map = {
+    def _calculate_turn_to_present_shield(self, current_target_arc, desired_shield_facing):
+        """
+        Calculate which direction to turn to present desired shield to target
+        
+        Args:
+            current_target_arc: Where target currently is
+            desired_shield_facing: Which shield we want to present ('fore', 'aft', 'port', 'starboard')
+            
+        Returns:
+            str: 'turn_left' or 'turn_right' or None
+        """
+        # Map shield facing to arc
+        facing_to_arc = {
             'fore': 'fore',
             'aft': 'aft',
             'port': 'port-fore',
             'starboard': 'starboard-fore'
         }
-        return facing_map.get(facing, 'fore')
-    
-    def _calculate_turn_to_present_arc(self, current_target_arc, desired_arc):
-        """
-        Calculate which direction to turn to present desired arc to target
         
-        Args:
-            current_target_arc: Where target currently is
-            desired_arc: Which arc we want to present to target
-            
-        Returns:
-            str: 'turn_left' or 'turn_right' or None
-        """
+        desired_arc = facing_to_arc.get(desired_shield_facing, 'fore')
+        
         # Arc positions (clockwise from fore)
         arc_positions = {
             'fore': 0,
@@ -482,54 +629,15 @@ class ShipAI:
         diff = (desired_pos - current_pos) % 6
         
         if diff == 0:
-            return None  # Already presenting correct arc
+            return None  # Already presenting correct shield
         elif diff <= 3:
             return 'turn_right'  # Turn clockwise
         else:
             return 'turn_left'  # Turn counter-clockwise
     
-    def _determine_turn_direction(self):
-        """
-        Determine which direction to turn to face target
-        
-        Returns:
-            str: 'turn_left' or 'turn_right' or None
-        """
-        if not self.target:
-            return None
-        
-        # Calculate angle to target
-        import math
-        dx = self.target.position[0] - self.ship.position[0]
-        dy = self.target.position[1] - self.ship.position[1]
-        angle_to_target = math.degrees(math.atan2(dy, dx))
-        
-        # Normalize to 0-360
-        if angle_to_target < 0:
-            angle_to_target += 360
-        
-        # Current facing angle (facing 0 = 90°, each facing is 60° clockwise)
-        current_angle = 90 + (self.ship.facing * 60)
-        current_angle = current_angle % 360
-        
-        # Calculate angular difference
-        diff = angle_to_target - current_angle
-        
-        # Normalize to -180 to 180
-        if diff > 180:
-            diff -= 360
-        elif diff < -180:
-            diff += 360
-        
-        # Determine turn direction
-        # Positive diff = target is clockwise = turn right
-        # Negative diff = target is counter-clockwise = turn left
-        if abs(diff) < 30:  # Already facing roughly correct direction
-            return None
-        elif diff > 0:
-            return 'turn_right'
-        else:
-            return 'turn_left'
+    # ═══════════════════════════════════════════════════════════════════
+    # FIRING AI
+    # ═══════════════════════════════════════════════════════════════════
     
     def should_fire(self):
         """
@@ -538,32 +646,57 @@ class ShipAI:
         Returns:
             bool: True if should fire, False otherwise
         """
-        if not self.target:
+        try:
+            if not self.target:
+                return False
+            
+            if not hasattr(self.target, 'hull') or self.target.hull <= 0:
+                return False
+            
+            # Verify we have coordinates
+            if not all(hasattr(self.ship, attr) for attr in ['hex_q', 'hex_r']):
+                return False
+            if not all(hasattr(self.target, attr) for attr in ['hex_q', 'hex_r']):
+                return False
+            
+            # Calculate distance
+            distance = self.hex_grid.distance(
+                self.ship.hex_q, self.ship.hex_r,
+                self.target.hex_q, self.target.hex_r
+            )
+            
+            # Get target arc
+            target_arc = self.ship.get_target_arc(self.target.hex_q, self.target.hex_r)
+            
+            # Check if any weapons are ready and in arc
+            can_fire = False
+            
+            # Check energy weapons (phasers, etc.)
+            if hasattr(self.ship, 'weapon_arrays'):
+                for weapon in self.ship.weapon_arrays:
+                    if hasattr(weapon, 'can_fire') and weapon.can_fire():
+                        if hasattr(weapon, 'firing_arcs') and target_arc in weapon.firing_arcs:
+                            if distance <= 12:  # Max phaser range
+                                can_fire = True
+                                break
+            
+            # Check torpedoes
+            if not can_fire and hasattr(self.ship, 'torpedo_bays'):
+                for torpedo in self.ship.torpedo_bays:
+                    if hasattr(torpedo, 'can_fire') and torpedo.can_fire():
+                        if hasattr(torpedo, 'firing_arcs') and target_arc in torpedo.firing_arcs:
+                            if distance <= 15:  # Max torpedo range
+                                can_fire = True
+                                break
+            
+            if can_fire:
+                logger.info(f"{self.ship.name}: Can fire at {self.target.name} (dist: {distance}, arc: {target_arc})")
+            
+            return can_fire
+            
+        except Exception as e:
+            logger.error(f"{self.ship.name}: Error in should_fire: {e}")
             return False
-        
-        # Calculate distance
-        distance = self.hex_grid.distance(
-            self.ship.hex_q, self.ship.hex_r,
-            self.target.hex_q, self.target.hex_r
-        )
-        
-        # Get target arc
-        target_arc = self.ship.get_target_arc(self.target.hex_q, self.target.hex_r)
-        
-        # Check if any weapons are ready and in arc
-        for weapon in self.ship.weapon_arrays:
-            if weapon.can_fire() and target_arc in weapon.firing_arcs:
-                # Check range (phasers max 12 hexes)
-                if distance <= 12:
-                    return True
-        
-        for torpedo in self.ship.torpedo_bays:
-            if torpedo.can_fire() and target_arc in torpedo.firing_arcs:
-                # Check range (torpedoes max 15 hexes)
-                if distance <= 15:
-                    return True
-        
-        return False
     
     def get_combat_report(self):
         """
@@ -572,44 +705,54 @@ class ShipAI:
         Returns:
             str: Status report
         """
-        if not self.target:
-            return "AI: No target"
-        
-        distance = self.hex_grid.distance(
-            self.ship.hex_q, self.ship.hex_r,
-            self.target.hex_q, self.target.hex_r
-        )
-        
-        target_arc = self.ship.get_target_arc(self.target.hex_q, self.target.hex_r)
-        
-        hull_percent = int((self.ship.hull / self.ship.max_hull) * 100)
-        
-        return f"AI: Dist={distance} Arc={target_arc} Hull={hull_percent}% Aggr={self.aggressive}"
+        try:
+            if not self.target:
+                return f"{self.ship.name}: No target"
+            
+            distance = self.hex_grid.distance(
+                self.ship.hex_q, self.ship.hex_r,
+                self.target.hex_q, self.target.hex_r
+            )
+            
+            target_arc = self.ship.get_target_arc(self.target.hex_q, self.target.hex_r)
+            hull_percent = int((self.ship.hull / self.ship.max_hull) * 100)
+            
+            return f"{self.ship.name}: Target={self.target.name} Dist={distance} Arc={target_arc} Hull={hull_percent}%"
+            
+        except Exception as e:
+            return f"{self.ship.name}: Error generating report: {e}"
 
 
 class AIPersonality:
-    """Different AI personality types for variety"""
+    """
+    Predefined AI personality types for variety in combat
+    
+    Each personality modifies the AI's behavior by adjusting:
+    - preferred_range: Optimal combat distance
+    - aggressive: Whether to close or maintain distance
+    - retreat_threshold: Hull % at which to retreat
+    """
     
     AGGRESSIVE = {
-        'preferred_range': 4,  # Close range
+        'preferred_range': 4,  # Close range combat
         'aggressive': True,
         'retreat_threshold': 0.2,  # Only retreat at 20% hull
     }
     
     DEFENSIVE = {
-        'preferred_range': 8,  # Long range
+        'preferred_range': 8,  # Long range combat
         'aggressive': False,
         'retreat_threshold': 0.5,  # Retreat at 50% hull
     }
     
     BALANCED = {
-        'preferred_range': 6,  # Medium range
+        'preferred_range': 6,  # Medium range combat
         'aggressive': True,
         'retreat_threshold': 0.3,  # Retreat at 30% hull
     }
     
     SNIPER = {
-        'preferred_range': 10,  # Very long range
+        'preferred_range': 10,  # Very long range combat
         'aggressive': False,
         'retreat_threshold': 0.4,  # Retreat at 40% hull
     }
@@ -620,7 +763,7 @@ class AIPersonality:
         Apply a personality to an AI instance
         
         Args:
-            ai: ShipAI instance
+            ai: ShipAI instance to modify
             personality_name: str ('aggressive', 'defensive', 'balanced', 'sniper')
         """
         personalities = {
@@ -635,3 +778,5 @@ class AIPersonality:
         ai.preferred_range = personality['preferred_range']
         ai.aggressive = personality['aggressive']
         ai.retreat_threshold = personality['retreat_threshold']
+        
+        logger.info(f"Applied {personality_name.upper()} personality to {ai.ship.name}")
