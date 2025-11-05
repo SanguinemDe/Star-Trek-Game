@@ -77,15 +77,31 @@ class StarTrekGUI:
         self.screens['character_creation'] = CharacterCreationScreen(self.screen)
         self.screens['galaxy_map'] = GalaxyMapScreen(self.screen, self.game_state)
         
-        # Combat test screen
-        from gui.combat_test_screen import CombatTestScreen
-        self.screens['combat_test'] = CombatTestScreen(self.screen)
+        # Combat test screen (will be created with config later)
+        self.screens['combat_test'] = None  # Placeholder, created on-demand
         
     def change_screen(self, screen_name):
         """Change to a different screen"""
+        # Special handling for combat_test - show config screen first
+        if screen_name == 'combat_test':
+            from gui.combat_test_screen import CombatConfigScreen, CombatTestScreen
+            
+            # Show configuration screen
+            config_screen = CombatConfigScreen(self.screen)
+            config = config_screen.run()
+            
+            if config:
+                # Create combat screen with configuration
+                self.screens['combat_test'] = CombatTestScreen(self.screen, config)
+                self.current_screen = self.screens['combat_test']
+                self.current_screen.next_screen = None
+            # else: cancelled, stay on current screen
+            return
+        
         if screen_name in self.screens:
             self.current_screen = self.screens[screen_name]
-            self.current_screen.next_screen = None
+            if self.current_screen:
+                self.current_screen.next_screen = None
         else:
             print(f"Screen '{screen_name}' not found!")
             

@@ -4,6 +4,7 @@ Detailed ship mechanics including systems, crew, power management, and combat
 Based on comprehensive design document
 """
 import random
+from .rng import game_rng
 
 
 class AdvancedShip:
@@ -312,8 +313,8 @@ class AdvancedShip:
             casualty_chance = 0.05  # 5% chance per day
             max_casualties = 1
         
-        if random.random() < casualty_chance:
-            casualties = random.randint(1, max_casualties)
+        if game_rng.roll_critical(casualty_chance):
+            casualties = game_rng.roll_damage(1, max_casualties)
             casualties = min(casualties, self.crew_count - 1)  # Never kill everyone
             self.crew_count -= casualties
             
@@ -481,23 +482,55 @@ class AdvancedShip:
             # Check for skill level drop (every 25% crew lost)
             self.check_crew_skill_degradation()
             
-            # Random system damage
-            self.apply_system_damage(hull_damage)
+            # Random system damage (returns list of damaged systems)
+            damaged_systems = self.apply_system_damage(hull_damage)
+        else:
+            casualties = 0
+            damaged_systems = []
         
-        # Check for destruction
+        # Check for hull failure or warp core breach
         if self.hull <= 0:
             self.hull = 0
+            from .logger import get_logger
+            logger = get_logger(__name__)
+            logger.warning(f"{self.name}: HULL INTEGRITY FAILURE - Ship disabled!")
+            
+            # Hull at 0 = disabled but not destroyed (unless warp core breaches)
+            breach_result = self.check_warp_core_breach()
+            
             return {
-                'destroyed': True,
-                'warp_core_breach': self.check_warp_core_breach(),
+                'destroyed': breach_result['ship_destroyed'],  # Only true if warp core breached
+                'disabled': not breach_result['ship_destroyed'],  # True if just hull failure
+                'warp_core_breach': breach_result['breach'],
+                'breach_survived': breach_result['survived'],
                 'hull_damage': hull_damage,
-                'casualties': casualties
+                'casualties': casualties + breach_result['casualties'],
+                'system_damage': damaged_systems
+            }
+        
+        # Check for warp core breach even if hull > 0 (system damage could destroy warp core)
+        if self.systems['warp_core'] <= 0:
+            from .logger import get_logger
+            logger = get_logger(__name__)
+            breach_result = self.check_warp_core_breach()
+            
+            return {
+                'destroyed': breach_result['ship_destroyed'],
+                'disabled': False,
+                'warp_core_breach': breach_result['breach'],
+                'breach_survived': breach_result['survived'],
+                'hull_damage': hull_damage,
+                'casualties': casualties + breach_result['casualties'],
+                'system_damage': damaged_systems
             }
         
         return {
             'destroyed': False,
+            'disabled': False,
+            'warp_core_breach': False,
             'hull_damage': hull_damage,
-            'casualties': casualties if hull_damage > 0 else 0
+            'casualties': casualties,
+            'system_damage': damaged_systems
         }
     
     def calculate_casualties(self, hull_damage):
@@ -525,29 +558,184 @@ class AdvancedShip:
         return max(0, casualties)
     
     def apply_system_damage(self, hull_damage):
-        """Randomly damage systems based on hull damage"""
-        damage_chance = hull_damage / self.max_hull
+        """
+        Apply damage to internal systems based on hull damage severity
         
-        for system in self.systems:
-            if random.random() < damage_chance * 0.3:  # 30% of damage ratio
-                system_damage = random.randint(5, 20)
-                self.systems[system] = max(0, self.systems[system] - system_damage)
+        Damage Model:
+        - Hull integrity affects damage chance and severity
+        - Critical systems (warp core, life support) have lower damage chance but higher consequences
+        - Damage cascades from critical systems to others
+        - Warp core at 0 = catastrophic breach (big boom)
+        - Hull at 0 = ship disabled but not destroyed (unless warp core breach)
+        
+        Damage Probability increases with hull damage:
+        - 0-25% hull: Low chance of system damage
+        - 25-50% hull: Moderate chance, minor damage
+        - 50-75% hull: High chance, moderate damage
+        - 75-100% hull: Very high chance, severe damage
+        """
+        from .logger import get_logger
+        logger = get_logger(__name__)
+        
+        # Calculate hull integrity percentage
+        hull_integrity = self.hull / self.max_hull
+        damage_ratio = hull_damage / self.max_hull
+        
+        # Base chance increases as hull integrity decreases
+        if hull_integrity > 0.75:
+            base_chance = damage_ratio * 0.15  # 15% at high integrity
+            damage_severity = (0.05, 0.10)  # 5-10% system damage
+        elif hull_integrity > 0.50:
+            base_chance = damage_ratio * 0.30  # 30% at moderate integrity
+            damage_severity = (0.08, 0.15)  # 8-15% system damage
+        elif hull_integrity > 0.25:
+            base_chance = damage_ratio * 0.50  # 50% at low integrity
+            damage_severity = (0.12, 0.25)  # 12-25% system damage
+        else:
+            base_chance = damage_ratio * 0.75  # 75% at critical integrity
+            damage_severity = (0.20, 0.40)  # 20-40% system damage (severe)
+        
+        # System damage priorities (chance multipliers)
+        # Critical systems less likely to take direct damage, but consequences are worse
+        system_vulnerability = {
+            'warp_core': 0.4,        # Protected, but critical if damaged
+            'life_support': 0.5,     # Somewhat protected
+            'shields': 1.2,          # More exposed (emitters on hull)
+            'weapons': 1.0,          # Standard vulnerability
+            'impulse_engines': 0.8,  # Somewhat protected
+            'warp_drive': 0.6,       # Well protected
+            'sensors': 1.1,          # Exposed arrays
+            'engineering': 0.7,      # Interior systems
+            'sick_bay': 0.9,         # Interior but vulnerable
+            'auxiliary_systems': 1.0 # Standard
+        }
+        
+        damaged_systems = []
+        
+        for system_name, vulnerability in system_vulnerability.items():
+            if system_name not in self.systems:
+                continue
+                
+            # Skip if system already destroyed
+            if self.systems[system_name] <= 0:
+                continue
+            
+            # Calculate damage chance for this system
+            system_chance = base_chance * vulnerability
+            
+            if game_rng.roll_critical(system_chance):
+                # Calculate damage amount
+                current_health = self.systems[system_name]
+                min_dmg = int(current_health * damage_severity[0])
+                max_dmg = int(current_health * damage_severity[1])
+                
+                system_damage = game_rng.roll_damage(max(1, min_dmg), max(1, max_dmg))
+                old_health = self.systems[system_name]
+                self.systems[system_name] = max(0, self.systems[system_name] - system_damage)
+                new_health = self.systems[system_name]
+                
+                damaged_systems.append({
+                    'system': system_name,
+                    'damage': system_damage,
+                    'old_health': old_health,
+                    'new_health': new_health,
+                    'destroyed': new_health == 0
+                })
+                
+                logger.info(f"{self.name}: {system_name} damaged! {old_health:.1f}% -> {new_health:.1f}%")
+                
+                # Check for critical system failure
+                if new_health == 0:
+                    logger.warning(f"{self.name}: {system_name} DESTROYED!")
+                    self._handle_system_destroyed(system_name)
+        
+        return damaged_systems
+    
+    def _handle_system_destroyed(self, system_name):
+        """Handle consequences of system destruction"""
+        from .logger import get_logger
+        logger = get_logger(__name__)
+        
+        if system_name == 'warp_core':
+            logger.critical(f"{self.name}: WARP CORE BREACH IMMINENT!")
+            # Don't trigger breach here, wait for check_warp_core_breach()
+            
+        elif system_name == 'life_support':
+            logger.warning(f"{self.name}: Life support failed! Crew efficiency severely reduced!")
+            # Crew casualties increase over time without life support
+            
+        elif system_name == 'impulse_engines':
+            logger.warning(f"{self.name}: Impulse engines offline! Ship mobility compromised!")
+            
+        elif system_name == 'warp_drive':
+            logger.warning(f"{self.name}: Warp drive offline! Cannot achieve warp speed!")
+            
+        elif system_name == 'shields':
+            logger.warning(f"{self.name}: Shield generators destroyed! No shield regeneration!")
+            
+        elif system_name == 'weapons':
+            logger.warning(f"{self.name}: Weapon systems destroyed! Cannot fire weapons!")
+            
+        elif system_name == 'sensors':
+            logger.warning(f"{self.name}: Sensors destroyed! Targeting severely degraded!")
     
     def check_warp_core_breach(self):
         """
-        Check if warp core breach occurs (player/crew death chance)
-        Engineer skill can prevent it
+        Check if warp core breach occurs when warp core reaches 0%
+        
+        Warp Core Breach = CATASTROPHIC EXPLOSION
+        - Ship completely destroyed (no salvage)
+        - Massive explosion damages nearby ships
+        - Very low survival chance for crew/player
+        - Engineer skill can improve survival odds slightly
+        
+        Hull reaching 0 = Ship disabled but intact (can be salvaged/repaired at starbase)
+        Warp core reaching 0 = BIG BOOM
+        
+        Returns:
+            dict with breach status and survival chance
         """
+        from .logger import get_logger
+        logger = get_logger(__name__)
+        
         if self.systems['warp_core'] <= 0:
-            # Chance of survival based on engineer skill
+            logger.critical(f"{self.name}: WARP CORE BREACH!")
+            
+            # Base survival chance is very low (10%)
+            base_survival = 0.10
+            
+            # Engineer can improve odds slightly
             if self.command_crew['engineer']:
                 engineer_bonus = self.command_crew['engineer'].get_skill_bonus()
-                survival_chance = engineer_bonus
+                # Engineer adds up to 20% survival chance (max 30% total)
+                survival_chance = min(0.30, base_survival + (engineer_bonus * 0.20))
+                logger.info(f"Engineer {self.command_crew['engineer'].name} attempting emergency protocols...")
             else:
-                survival_chance = 0.1
+                survival_chance = base_survival
             
-            return random.random() > survival_chance
-        return False
+            # Roll for survival
+            survived = game_rng.roll_critical(survival_chance)
+            
+            if survived:
+                logger.warning(f"{self.name}: Crew evacuated before breach! {int(survival_chance * 100)}% survived!")
+            else:
+                logger.critical(f"{self.name}: WARP CORE BREACH - TOTAL LOSS OF SHIP AND CREW!")
+            
+            return {
+                'breach': True,
+                'survived': survived,
+                'survival_chance': survival_chance,
+                'casualties': 0 if survived else self.crew_count,
+                'ship_destroyed': True
+            }
+        
+        return {
+            'breach': False,
+            'survived': True,
+            'survival_chance': 1.0,
+            'casualties': 0,
+            'ship_destroyed': False
+        }
     
     # ═══════════════════════════════════════════════════════════════════
     # REPAIRS
@@ -635,7 +823,7 @@ class AdvancedShip:
                 # Calculate hit chance (sensors affect accuracy)
                 hit_chance = 0.85 * sensors_efficiency * (1.0 + tactical_bonus * 0.3)
                 
-                if random.random() < hit_chance:
+                if game_rng.roll_hit(hit_chance):
                     # Calculate damage
                     base_damage = weapon.base_damage
                     damage = base_damage * weapons_efficiency * weapon_power
@@ -652,7 +840,7 @@ class AdvancedShip:
             if arc in torp_bay.firing_arcs and torp_bay.torpedoes > 0:
                 hit_chance = 0.75 * sensors_efficiency * (1.0 + tactical_bonus * 0.3)
                 
-                if random.random() < hit_chance:
+                if game_rng.roll_hit(hit_chance):
                     base_damage = torp_bay.base_damage
                     damage = base_damage * weapons_efficiency
                     damage *= (1.0 + tactical_bonus * 0.5)
@@ -1105,6 +1293,46 @@ class AdvancedShip:
             return 'aft'
         else:  # 225 < relative_angle < 315
             return 'port'
+    
+    def get_occupied_hexes(self, hex_grid=None):
+        """
+        Get list of all hexes occupied by this ship based on its size
+        
+        Args:
+            hex_grid: HexGrid object (optional, only needed if you need neighbor calculation)
+        
+        Returns:
+            List of (q, r) tuples for all hexes this ship occupies
+            
+        Size mapping:
+            Small, Medium, Large = 1 hex (center only)
+            Very Large, Huge = 7 hexes (center + 6 neighbors)
+        """
+        # Single hex ships
+        if self.size in ["Small", "Medium", "Large"]:
+            return [(self.hex_q, self.hex_r)]
+        
+        # Multi-hex ships (Very Large, Huge)
+        elif self.size in ["Very Large", "Huge"]:
+            occupied = [(self.hex_q, self.hex_r)]  # Center hex
+            
+            # Add 6 surrounding hexes
+            # Axial direction vectors for 6 neighbors
+            directions = [
+                (+1, 0), (+1, -1), (0, -1),
+                (-1, 0), (-1, +1), (0, +1)
+            ]
+            for dq, dr in directions:
+                occupied.append((self.hex_q + dq, self.hex_r + dr))
+            
+            return occupied
+        
+        # Default to single hex
+        return [(self.hex_q, self.hex_r)]
+    
+    def is_multi_hex(self):
+        """Check if this ship occupies multiple hexes"""
+        return self.size in ["Very Large", "Huge"]
 
 
 class WeaponArray:

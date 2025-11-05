@@ -20,11 +20,20 @@ import os
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Initialize logging system
+from game.logger import setup_logging, get_logger
+setup_logging()
+logger = get_logger(__name__)
+
 def main():
     """Launch the GUI version of the game with error handling"""
     try:
         from gui_main import StarTrekGUI
         import pygame
+        
+        logger.info("=" * 60)
+        logger.info("STAR TREK: FEDERATION COMMAND - Starting")
+        logger.info("=" * 60)
         
         print("=" * 60)
         print("STAR TREK: FEDERATION COMMAND")
@@ -34,9 +43,12 @@ def main():
         print("=" * 60)
         
         app = StarTrekGUI()
+        logger.info("Game initialized successfully")
         app.run()
+        logger.info("Game exited normally")
         
     except ImportError as e:
+        logger.error(f"Import error: {e}")
         print("\n" + "=" * 60)
         print("ERROR: Missing dependencies!")
         print("=" * 60)
@@ -49,6 +61,7 @@ def main():
         sys.exit(1)
         
     except Exception as e:
+        logger.exception(f"Fatal error: {e}")
         print("\n" + "=" * 60)
         print("ERROR: Failed to launch game!")
         print("=" * 60)

@@ -42,7 +42,7 @@ def create_miranda_class(name, registry):
     ship.max_hull = 800
     ship.hull = 800
     ship.armor = 40
-    ship.shields = {'fore': 400, 'aft': 300, 'port': 350, 'starboard': 350}
+    ship.shields = {'fore': 1070, 'aft': 800, 'port': 935, 'starboard': 935}
     ship.max_shields = ship.shields.copy()
     
     # Starter Weapons (Mk IV equipment)
@@ -80,7 +80,7 @@ def create_galaxy_class(name, registry):
     ship = AdvancedShip(name, registry, "Galaxy", "Heavy Cruiser", 2363)
     ship.reputation_cost = 50000
     ship.minimum_rank = 8
-    ship.size = "Very Large"
+    ship.size = "Huge"  # 642m length - one of the largest Federation ships
     ship.cargo_space = 500
     ship.upgrade_space = 200  # Available space for upgrades
     
@@ -94,7 +94,7 @@ def create_galaxy_class(name, registry):
     ship.max_hull = 5000
     ship.hull = 5000
     ship.armor = 100
-    ship.shields = {'fore': 2000, 'aft': 1500, 'port': 1800, 'starboard': 1800}
+    ship.shields = {'fore': 5340, 'aft': 4005, 'port': 4805, 'starboard': 4805}
     ship.max_shields = ship.shields.copy()
     
     # Power
@@ -151,7 +151,7 @@ def create_daedalus_class(name, registry):
     ship.max_hull = 600
     ship.hull = 600
     ship.armor = 20
-    ship.shields = {'fore': 200, 'aft': 200, 'port': 200, 'starboard': 200}
+    ship.shields = {'fore': 535, 'aft': 535, 'port': 535, 'starboard': 535}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 210
@@ -187,7 +187,7 @@ def create_oberth_class(name, registry):
     ship.max_hull = 400
     ship.hull = 400
     ship.armor = 15
-    ship.shields = {'fore': 250, 'aft': 200, 'port': 200, 'starboard': 200}
+    ship.shields = {'fore': 670, 'aft': 535, 'port': 535, 'starboard': 535}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 240
@@ -220,7 +220,7 @@ def create_sydney_class(name, registry):
     ship.max_hull = 550
     ship.hull = 550
     ship.armor = 25
-    ship.shields = {'fore': 280, 'aft': 250, 'port': 250, 'starboard': 250}
+    ship.shields = {'fore': 750, 'aft': 670, 'port': 670, 'starboard': 670}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 255
@@ -258,7 +258,7 @@ def create_ptolemy_class(name, registry):
     ship.max_hull = 650
     ship.hull = 650
     ship.armor = 20
-    ship.shields = {'fore': 300, 'aft': 280, 'port': 280, 'starboard': 280}
+    ship.shields = {'fore': 800, 'aft': 750, 'port': 750, 'starboard': 750}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 330
@@ -291,7 +291,7 @@ def create_soyuz_class(name, registry):
     ship.max_hull = 750
     ship.hull = 750
     ship.armor = 35
-    ship.shields = {'fore': 380, 'aft': 320, 'port': 340, 'starboard': 340}
+    ship.shields = {'fore': 1015, 'aft': 855, 'port': 910, 'starboard': 910}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 285
@@ -328,7 +328,7 @@ def create_constitution_class(name, registry):
     ship.max_hull = 1200
     ship.hull = 1200
     ship.armor = 45
-    ship.shields = {'fore': 500, 'aft': 400, 'port': 450, 'starboard': 450}
+    ship.shields = {'fore': 1335, 'aft': 1070, 'port': 1200, 'starboard': 1200}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 360
@@ -371,7 +371,7 @@ def create_hermes_class(name, registry):
     ship.max_hull = 600
     ship.hull = 600
     ship.armor = 25
-    ship.shields = {'fore': 340, 'aft': 300, 'port': 320, 'starboard': 320}
+    ship.shields = {'fore': 910, 'aft': 800, 'port': 855, 'starboard': 855}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 270
@@ -407,7 +407,7 @@ def create_saladin_class(name, registry):
     ship.max_hull = 850
     ship.hull = 850
     ship.armor = 45
-    ship.shields = {'fore': 420, 'aft': 360, 'port': 390, 'starboard': 390}
+    ship.shields = {'fore': 1120, 'aft': 960, 'port': 1040, 'starboard': 1040}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
@@ -443,7 +443,7 @@ def create_constellation_class(name, registry):
     ship.max_hull = 1300
     ship.hull = 1300
     ship.armor = 50
-    ship.shields = {'fore': 520, 'aft': 420, 'port': 470, 'starboard': 470}
+    ship.shields = {'fore': 1390, 'aft': 1120, 'port': 1255, 'starboard': 1255}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 375
@@ -482,7 +482,7 @@ def create_antares_class(name, registry):
     ship.max_hull = 900
     ship.hull = 900
     ship.armor = 40
-    ship.shields = {'fore': 350, 'aft': 300, 'port': 320, 'starboard': 320}
+    ship.shields = {'fore': 935, 'aft': 800, 'port': 855, 'starboard': 855}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
@@ -520,7 +520,7 @@ def create_constitution_refit_class(name, registry):
     ship.max_hull = 1400
     ship.hull = 1400
     ship.armor = 65
-    ship.shields = {'fore': 550, 'aft': 440, 'port': 495, 'starboard': 495}
+    ship.shields = {'fore': 1470, 'aft': 1175, 'port': 1320, 'starboard': 1320}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 390
@@ -559,7 +559,7 @@ def create_excelsior_class(name, registry):
     ship.max_hull = 1500
     ship.hull = 1500
     ship.armor = 70
-    ship.shields = {'fore': 600, 'aft': 480, 'port': 540, 'starboard': 540}
+    ship.shields = {'fore': 1600, 'aft': 1280, 'port': 1440, 'starboard': 1440}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
@@ -598,7 +598,7 @@ def create_ambassador_class(name, registry):
     ship.max_hull = 1600
     ship.hull = 1600
     ship.armor = 75
-    ship.shields = {'fore': 650, 'aft': 520, 'port': 585, 'starboard': 585}
+    ship.shields = {'fore': 1735, 'aft': 1390, 'port': 1560, 'starboard': 1560}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
@@ -637,7 +637,7 @@ def create_springfield_class(name, registry):
     ship.max_hull = 950
     ship.hull = 950
     ship.armor = 50
-    ship.shields = {'fore': 460, 'aft': 400, 'port': 430, 'starboard': 430}
+    ship.shields = {'fore': 1230, 'aft': 1070, 'port': 1150, 'starboard': 1150}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 315
@@ -674,7 +674,7 @@ def create_cheyenne_class(name, registry):
     ship.max_hull = 1100
     ship.hull = 1100
     ship.armor = 55
-    ship.shields = {'fore': 520, 'aft': 460, 'port': 490, 'starboard': 490}
+    ship.shields = {'fore': 1390, 'aft': 1230, 'port': 1310, 'starboard': 1310}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 360
@@ -712,7 +712,7 @@ def create_challenger_class(name, registry):
     ship.max_hull = 1150
     ship.hull = 1150
     ship.armor = 55
-    ship.shields = {'fore': 540, 'aft': 460, 'port': 500, 'starboard': 500}
+    ship.shields = {'fore': 1440, 'aft': 1230, 'port': 1335, 'starboard': 1335}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 375
@@ -748,7 +748,7 @@ def create_new_orleans_class(name, registry):
     ship.max_hull = 1050
     ship.hull = 1050
     ship.armor = 52
-    ship.shields = {'fore': 500, 'aft': 440, 'port': 470, 'starboard': 470}
+    ship.shields = {'fore': 1335, 'aft': 1175, 'port': 1255, 'starboard': 1255}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 345
@@ -784,7 +784,7 @@ def create_freedom_class(name, registry):
     ship.max_hull = 800
     ship.hull = 800
     ship.armor = 55
-    ship.shields = {'fore': 420, 'aft': 380, 'port': 400, 'starboard': 400}
+    ship.shields = {'fore': 1120, 'aft': 1015, 'port': 1070, 'starboard': 1070}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
@@ -820,7 +820,7 @@ def create_nova_class(name, registry):
     ship.max_hull = 700
     ship.hull = 700
     ship.armor = 30
-    ship.shields = {'fore': 380, 'aft': 340, 'port': 360, 'starboard': 360}
+    ship.shields = {'fore': 1015, 'aft': 910, 'port': 960, 'starboard': 960}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
@@ -860,7 +860,7 @@ def create_niagara_class(name, registry):
     ship.max_hull = 1250
     ship.hull = 1250
     ship.armor = 60
-    ship.shields = {'fore': 560, 'aft': 480, 'port': 520, 'starboard': 520}
+    ship.shields = {'fore': 1495, 'aft': 1280, 'port': 1390, 'starboard': 1390}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 390
@@ -897,7 +897,7 @@ def create_olympic_class(name, registry):
     ship.max_hull = 1000
     ship.hull = 1000
     ship.armor = 48
-    ship.shields = {'fore': 480, 'aft': 400, 'port': 440, 'starboard': 440}
+    ship.shields = {'fore': 1280, 'aft': 1070, 'port': 1175, 'starboard': 1175}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 360
@@ -934,7 +934,7 @@ def create_yeager_class(name, registry):
     ship.max_hull = 900
     ship.hull = 900
     ship.armor = 50
-    ship.shields = {'fore': 440, 'aft': 380, 'port': 410, 'starboard': 410}
+    ship.shields = {'fore': 1175, 'aft': 1015, 'port': 1095, 'starboard': 1095}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 315
@@ -970,7 +970,7 @@ def create_saber_class(name, registry):
     ship.max_hull = 850
     ship.hull = 850
     ship.armor = 58
-    ship.shields = {'fore': 440, 'aft': 360, 'port': 400, 'starboard': 400}
+    ship.shields = {'fore': 1175, 'aft': 960, 'port': 1070, 'starboard': 1070}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
@@ -1006,7 +1006,7 @@ def create_bradbury_class(name, registry):
     ship.max_hull = 950
     ship.hull = 950
     ship.armor = 35
-    ship.shields = {'fore': 460, 'aft': 380, 'port': 420, 'starboard': 420}
+    ship.shields = {'fore': 1230, 'aft': 1015, 'port': 1120, 'starboard': 1120}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 330
@@ -1042,7 +1042,7 @@ def create_renaissance_class(name, registry):
     ship.max_hull = 1300
     ship.hull = 1300
     ship.armor = 62
-    ship.shields = {'fore': 600, 'aft': 500, 'port': 550, 'starboard': 550}
+    ship.shields = {'fore': 1600, 'aft': 1335, 'port': 1470, 'starboard': 1470}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 405
@@ -1078,7 +1078,7 @@ def create_steamrunner_class(name, registry):
     ship.max_hull = 1050
     ship.hull = 1050
     ship.armor = 52
-    ship.shields = {'fore': 500, 'aft': 420, 'port': 460, 'starboard': 460}
+    ship.shields = {'fore': 1335, 'aft': 1120, 'port': 1230, 'starboard': 1230}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 330
@@ -1115,7 +1115,7 @@ def create_norway_class(name, registry):
     ship.max_hull = 1100
     ship.hull = 1100
     ship.armor = 54
-    ship.shields = {'fore': 520, 'aft': 440, 'port': 480, 'starboard': 480}
+    ship.shields = {'fore': 1390, 'aft': 1175, 'port': 1280, 'starboard': 1280}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 345
@@ -1151,7 +1151,7 @@ def create_nebula_class(name, registry):
     ship.max_hull = 1800
     ship.hull = 1800
     ship.armor = 60
-    ship.shields = {'fore': 700, 'aft': 560, 'port': 630, 'starboard': 630}
+    ship.shields = {'fore': 1870, 'aft': 1495, 'port': 1680, 'starboard': 1680}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 480
@@ -1189,7 +1189,7 @@ def create_centaur_class(name, registry):
     ship.max_hull = 1050
     ship.hull = 1050
     ship.armor = 63
-    ship.shields = {'fore': 500, 'aft': 420, 'port': 460, 'starboard': 460}
+    ship.shields = {'fore': 1335, 'aft': 1120, 'port': 1230, 'starboard': 1230}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 345
@@ -1225,7 +1225,7 @@ def create_intrepid_class(name, registry):
     ship.max_hull = 1000
     ship.hull = 1000
     ship.armor = 48
-    ship.shields = {'fore': 480, 'aft': 400, 'port': 440, 'starboard': 440}
+    ship.shields = {'fore': 1280, 'aft': 1070, 'port': 1175, 'starboard': 1175}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 360
@@ -1261,7 +1261,7 @@ def create_akira_class(name, registry):
     ship.max_hull = 1400
     ship.hull = 1400
     ship.armor = 68
-    ship.shields = {'fore': 620, 'aft': 520, 'port': 570, 'starboard': 570}
+    ship.shields = {'fore': 1655, 'aft': 1390, 'port': 1520, 'starboard': 1520}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
@@ -1302,7 +1302,7 @@ def create_curry_class(name, registry):
     ship.max_hull = 1200
     ship.hull = 1200
     ship.armor = 58
-    ship.shields = {'fore': 560, 'aft': 460, 'port': 510, 'starboard': 510}
+    ship.shields = {'fore': 1495, 'aft': 1230, 'port': 1360, 'starboard': 1360}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 375
@@ -1338,7 +1338,7 @@ def create_aquarius_class(name, registry):
     ship.max_hull = 600
     ship.hull = 600
     ship.armor = 50
-    ship.shields = {'fore': 380, 'aft': 320, 'port': 350, 'starboard': 350}
+    ship.shields = {'fore': 1015, 'aft': 855, 'port': 935, 'starboard': 935}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 270
@@ -1374,7 +1374,7 @@ def create_defiant_class(name, registry):
     ship.max_hull = 750
     ship.hull = 750
     ship.armor = 60
-    ship.shields = {'fore': 480, 'aft': 400, 'port': 440, 'starboard': 440}
+    ship.shields = {'fore': 1280, 'aft': 1070, 'port': 1175, 'starboard': 1175}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
@@ -1412,7 +1412,7 @@ def create_california_class(name, registry):
     ship.max_hull = 1100
     ship.hull = 1100
     ship.armor = 55
-    ship.shields = {'fore': 520, 'aft': 440, 'port': 480, 'starboard': 480}
+    ship.shields = {'fore': 1390, 'aft': 1175, 'port': 1280, 'starboard': 1280}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 375
@@ -1451,7 +1451,7 @@ def create_parliament_class(name, registry):
     ship.max_hull = 1250
     ship.hull = 1250
     ship.armor = 58
-    ship.shields = {'fore': 580, 'aft': 480, 'port': 530, 'starboard': 530}
+    ship.shields = {'fore': 1550, 'aft': 1280, 'port': 1415, 'starboard': 1415}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 390
@@ -1491,7 +1491,7 @@ def create_reliant_class(name, registry):
     ship.max_hull = 1300
     ship.hull = 1300
     ship.armor = 62
-    ship.shields = {'fore': 600, 'aft': 500, 'port': 550, 'starboard': 550}
+    ship.shields = {'fore': 1600, 'aft': 1335, 'port': 1470, 'starboard': 1470}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 405
@@ -1527,7 +1527,7 @@ def create_ross_class(name, registry):
     ship.max_hull = 1350
     ship.hull = 1350
     ship.armor = 65
-    ship.shields = {'fore': 620, 'aft': 520, 'port': 570, 'starboard': 570}
+    ship.shields = {'fore': 1655, 'aft': 1390, 'port': 1520, 'starboard': 1520}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
@@ -1563,7 +1563,7 @@ def create_inquiry_class(name, registry):
     ship.max_hull = 1400
     ship.hull = 1400
     ship.armor = 68
-    ship.shields = {'fore': 640, 'aft': 540, 'port': 590, 'starboard': 590}
+    ship.shields = {'fore': 1710, 'aft': 1440, 'port': 1575, 'starboard': 1575}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 435
@@ -1600,7 +1600,7 @@ def create_sutherland_class(name, registry):
     ship.max_hull = 1550
     ship.hull = 1550
     ship.armor = 50
-    ship.shields = {'fore': 660, 'aft': 540, 'port': 600, 'starboard': 600}
+    ship.shields = {'fore': 1760, 'aft': 1440, 'port': 1600, 'starboard': 1600}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
@@ -1637,7 +1637,7 @@ def create_sovereign_class(name, registry):
     ship.max_hull = 1800
     ship.hull = 1800
     ship.armor = 120
-    ship.shields = {'fore': 800, 'aft': 640, 'port': 720, 'starboard': 720}
+    ship.shields = {'fore': 2135, 'aft': 1710, 'port': 1920, 'starboard': 1920}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 510
@@ -1675,7 +1675,7 @@ def create_obena_class(name, registry):
     ship.max_hull = 1450
     ship.hull = 1450
     ship.armor = 70
-    ship.shields = {'fore': 660, 'aft': 560, 'port': 610, 'starboard': 610}
+    ship.shields = {'fore': 1760, 'aft': 1495, 'port': 1630, 'starboard': 1630}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
@@ -1711,7 +1711,7 @@ def create_dauntless_class(name, registry):
     ship.max_hull = 1050
     ship.hull = 1050
     ship.armor = 45
-    ship.shields = {'fore': 560, 'aft': 480, 'port': 520, 'starboard': 520}
+    ship.shields = {'fore': 1495, 'aft': 1280, 'port': 1390, 'starboard': 1390}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 405
@@ -1747,7 +1747,7 @@ def create_prometheus_class(name, registry):
     ship.max_hull = 1100
     ship.hull = 1100
     ship.armor = 75
-    ship.shields = {'fore': 660, 'aft': 560, 'port': 610, 'starboard': 610}
+    ship.shields = {'fore': 1760, 'aft': 1495, 'port': 1630, 'starboard': 1630}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
@@ -1788,7 +1788,7 @@ def create_protostar_class(name, registry):
     ship.max_hull = 1000
     ship.hull = 1000
     ship.armor = 78
-    ship.shields = {'fore': 540, 'aft': 460, 'port': 500, 'starboard': 500}
+    ship.shields = {'fore': 1440, 'aft': 1230, 'port': 1335, 'starboard': 1335}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
@@ -1828,7 +1828,7 @@ def create_luna_class(name, registry):
     ship.max_hull = 1250
     ship.hull = 1250
     ship.armor = 42
-    ship.shields = {'fore': 620, 'aft': 520, 'port': 570, 'starboard': 570}
+    ship.shields = {'fore': 1655, 'aft': 1390, 'port': 1520, 'starboard': 1520}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
@@ -1864,7 +1864,7 @@ def create_pathfinder_class(name, registry):
     ship.max_hull = 1050
     ship.hull = 1050
     ship.armor = 42
-    ship.shields = {'fore': 520, 'aft': 440, 'port': 480, 'starboard': 480}
+    ship.shields = {'fore': 1390, 'aft': 1175, 'port': 1280, 'starboard': 1280}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 390
@@ -1900,7 +1900,7 @@ def create_jein_class(name, registry):
     ship.max_hull = 1400
     ship.hull = 1400
     ship.armor = 80
-    ship.shields = {'fore': 640, 'aft': 540, 'port': 590, 'starboard': 590}
+    ship.shields = {'fore': 1710, 'aft': 1440, 'port': 1575, 'starboard': 1575}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
@@ -1936,7 +1936,7 @@ def create_shepard_class(name, registry):
     ship.max_hull = 1550
     ship.hull = 1550
     ship.armor = 130
-    ship.shields = {'fore': 700, 'aft': 580, 'port': 640, 'starboard': 640}
+    ship.shields = {'fore': 1870, 'aft': 1550, 'port': 1710, 'starboard': 1710}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 480
@@ -1973,7 +1973,7 @@ def create_duderstadt_class(name, registry):
     ship.max_hull = 1150
     ship.hull = 1150
     ship.armor = 48
-    ship.shields = {'fore': 580, 'aft': 500, 'port': 540, 'starboard': 540}
+    ship.shields = {'fore': 1550, 'aft': 1335, 'port': 1440, 'starboard': 1440}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
@@ -2009,7 +2009,7 @@ def create_gagarin_class(name, registry):
     ship.max_hull = 1600
     ship.hull = 1600
     ship.armor = 135
-    ship.shields = {'fore': 720, 'aft': 600, 'port': 660, 'starboard': 660}
+    ship.shields = {'fore': 1920, 'aft': 1600, 'port': 1760, 'starboard': 1760}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 495
@@ -2046,7 +2046,7 @@ def create_excelsior_ii_class(name, registry):
     ship.max_hull = 1650
     ship.hull = 1650
     ship.armor = 95
-    ship.shields = {'fore': 700, 'aft': 580, 'port': 640, 'starboard': 640}
+    ship.shields = {'fore': 1870, 'aft': 1550, 'port': 1710, 'starboard': 1710}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 495
@@ -2083,7 +2083,7 @@ def create_alita_class(name, registry):
     ship.max_hull = 1400
     ship.hull = 1400
     ship.armor = 100
-    ship.shields = {'fore': 640, 'aft': 540, 'port': 590, 'starboard': 590}
+    ship.shields = {'fore': 1710, 'aft': 1440, 'port': 1575, 'starboard': 1575}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 435
@@ -2120,7 +2120,7 @@ def create_echelon_class(name, registry):
     ship.max_hull = 1550
     ship.hull = 1550
     ship.armor = 130
-    ship.shields = {'fore': 720, 'aft': 600, 'port': 660, 'starboard': 660}
+    ship.shields = {'fore': 1920, 'aft': 1600, 'port': 1760, 'starboard': 1760}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 495
@@ -2156,7 +2156,7 @@ def create_edison_class(name, registry):
     ship.max_hull = 1350
     ship.hull = 1350
     ship.armor = 112
-    ship.shields = {'fore': 660, 'aft': 560, 'port': 610, 'starboard': 610}
+    ship.shields = {'fore': 1760, 'aft': 1495, 'port': 1630, 'starboard': 1630}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 465
@@ -2192,7 +2192,7 @@ def create_sagan_class(name, registry):
     ship.max_hull = 1450
     ship.hull = 1450
     ship.armor = 82
-    ship.shields = {'fore': 670, 'aft': 560, 'port': 615, 'starboard': 615}
+    ship.shields = {'fore': 1790, 'aft': 1495, 'port': 1640, 'starboard': 1640}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 465
@@ -2228,7 +2228,7 @@ def create_constitution_iii_class(name, registry):
     ship.max_hull = 1500
     ship.hull = 1500
     ship.armor = 82
-    ship.shields = {'fore': 680, 'aft': 560, 'port': 620, 'starboard': 620}
+    ship.shields = {'fore': 1815, 'aft': 1495, 'port': 1655, 'starboard': 1655}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 480
@@ -2265,7 +2265,7 @@ def create_vesta_class(name, registry):
     ship.max_hull = 1450
     ship.hull = 1450
     ship.armor = 82
-    ship.shields = {'fore': 700, 'aft': 580, 'port': 640, 'starboard': 640}
+    ship.shields = {'fore': 1870, 'aft': 1550, 'port': 1710, 'starboard': 1710}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 480
@@ -2308,7 +2308,7 @@ def create_curiosity_class(name, registry):
     ship.max_hull = 1600
     ship.hull = 1600
     ship.armor = 88
-    ship.shields = {'fore': 740, 'aft': 620, 'port': 680, 'starboard': 680}
+    ship.shields = {'fore': 1975, 'aft': 1655, 'port': 1815, 'starboard': 1815}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 510
@@ -2332,7 +2332,7 @@ def create_venture_class(name, registry):
     ship = AdvancedShip(name, registry, "Venture", "Galaxy Dreadnought", 2385)
     ship.reputation_cost = 3800
     ship.minimum_rank = 8
-    ship.size = "Very Large"
+    ship.size = "Huge"  # Galaxy-class variant, 642m+ length
     ship.cargo_space = 520
     ship.upgrade_space = 210
     
@@ -2344,7 +2344,7 @@ def create_venture_class(name, registry):
     ship.max_hull = 2100
     ship.hull = 2100
     ship.armor = 170
-    ship.shields = {'fore': 850, 'aft': 680, 'port': 765, 'starboard': 765}
+    ship.shields = {'fore': 2270, 'aft': 1815, 'port': 2045, 'starboard': 2045}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 570
@@ -2382,20 +2382,48 @@ def create_odyssey_class(name, registry):
     ship.max_hull = 2200
     ship.hull = 2200
     ship.armor = 118
-    ship.shields = {'fore': 900, 'aft': 720, 'port': 810, 'starboard': 810}
+    # Significantly increased shields to handle 18 phaser + 5 torpedo broadside
+    ship.shields = {'fore': 2400, 'aft': 1920, 'port': 2160, 'starboard': 2160}
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 600
     ship.power_distribution = {'engines': 200, 'shields': 200, 'weapons': 200}
     
+    # 18 Phaser Arrays (cannon loadout) - Forward-heavy configuration
     ship.weapon_arrays = [
-        WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
-        WeaponArray('phaser', mark=10, firing_arcs=['aft', 'port', 'starboard'], upgrade_space_cost=5),
-        WeaponArray('phaser', mark=9, firing_arcs=['fore'], upgrade_space_cost=5)
+        # Forward Arc (6 arrays)
+        WeaponArray('phaser', mark=12, firing_arcs=['fore'], upgrade_space_cost=5),  # Dorsal saucer port
+        WeaponArray('phaser', mark=12, firing_arcs=['fore'], upgrade_space_cost=5),  # Dorsal saucer starboard
+        WeaponArray('phaser', mark=12, firing_arcs=['fore'], upgrade_space_cost=5),  # Ventral saucer port
+        WeaponArray('phaser', mark=12, firing_arcs=['fore'], upgrade_space_cost=5),  # Ventral saucer starboard
+        WeaponArray('phaser', mark=12, firing_arcs=['fore'], upgrade_space_cost=5),  # Forward engineering upper
+        WeaponArray('phaser', mark=12, firing_arcs=['fore'], upgrade_space_cost=5),  # Forward engineering lower
+        # Aft Arc (4 arrays)
+        WeaponArray('phaser', mark=12, firing_arcs=['aft'], upgrade_space_cost=5),  # Dorsal engineering port
+        WeaponArray('phaser', mark=12, firing_arcs=['aft'], upgrade_space_cost=5),  # Dorsal engineering starboard
+        WeaponArray('phaser', mark=12, firing_arcs=['aft'], upgrade_space_cost=5),   # Ventral engineering port
+        WeaponArray('phaser', mark=12, firing_arcs=['aft'], upgrade_space_cost=5),   # Ventral engineering starboard
+        # Port Arc (4 arrays)
+        WeaponArray('phaser', mark=12, firing_arcs=['port'], upgrade_space_cost=5),  # Dorsal saucer port
+        WeaponArray('phaser', mark=12, firing_arcs=['port'], upgrade_space_cost=5),  # Ventral saucer port
+        WeaponArray('phaser', mark=12, firing_arcs=['port'], upgrade_space_cost=5),   # Port nacelle pylon upper
+        WeaponArray('phaser', mark=12, firing_arcs=['port'], upgrade_space_cost=5),   # Port nacelle pylon lower
+        # Starboard Arc (4 arrays)
+        WeaponArray('phaser', mark=12, firing_arcs=['starboard'], upgrade_space_cost=5),  # Dorsal saucer starboard
+        WeaponArray('phaser', mark=12, firing_arcs=['starboard'], upgrade_space_cost=5),  # Ventral saucer starboard
+        WeaponArray('phaser', mark=12, firing_arcs=['starboard'], upgrade_space_cost=5),   # Starboard nacelle pylon upper
+        WeaponArray('phaser', mark=12, firing_arcs=['starboard'], upgrade_space_cost=5)    # Starboard nacelle pylon lower
     ]
+    
+    # 5 Torpedo Launchers (cannon loadout) - Forward emphasis with full coverage
     ship.torpedo_bays = [
-        TorpedoBay('quantum', mark=12, firing_arcs=['fore'], max_torpedoes=240, upgrade_space_cost=10),
-        TorpedoBay('quantum', mark=10, firing_arcs=['aft'], max_torpedoes=200, upgrade_space_cost=10)
+        # Forward Arc (3 launchers)
+        TorpedoBay('quantum', mark=12, firing_arcs=['fore'], max_torpedoes=250, upgrade_space_cost=10),  # Main forward launcher
+        TorpedoBay('quantum', mark=12, firing_arcs=['fore'], max_torpedoes=200, upgrade_space_cost=10),  # Forward upper
+        TorpedoBay('quantum', mark=12, firing_arcs=['fore'], max_torpedoes=200, upgrade_space_cost=10),  # Forward lower
+        # Aft Arc (2 launchers)
+        TorpedoBay('quantum', mark=12, firing_arcs=['aft'], max_torpedoes=180, upgrade_space_cost=10),   # Main aft launcher
+        TorpedoBay('quantum', mark=12, firing_arcs=['aft'], max_torpedoes=150, upgrade_space_cost=10)    # Secondary aft launcher
     ]
     
     ship.max_crew = 2500
@@ -2404,34 +2432,92 @@ def create_odyssey_class(name, registry):
 
 
 def create_yorktown_class(name, registry):
-    """Yorktown-class Science Star Cruiser"""
-    ship = AdvancedShip(name, registry, "Yorktown", "Science Star Cruiser", 2385)
-    ship.reputation_cost = 4200
-    ship.minimum_rank = 8
-    ship.size = "Huge"
-    ship.cargo_space = 580
-    ship.upgrade_space = 225
+    """
+    Yorktown-class Dreadnought - Odyssey Variant
     
+    The ultimate Federation warship. Front-heavy weapon configuration
+    for devastating alpha strikes. All Mark XV equipment.
+    
+    Armament:
+    - 22 Mark XV Phaser Arrays (8 fore, 4 aft, 5 port, 5 starboard)
+    - 6 Mark XV Quantum Torpedo Launchers (4 fore, 2 aft)
+    
+    Equipment:
+    - Mark XV Shields
+    - Mark XV Impulse Engines  
+    - Mark XV Warp Core
+    """
+    ship = AdvancedShip(name, registry, "Yorktown", "Dreadnought", 2385)
+    ship.reputation_cost = 5500
+    ship.minimum_rank = 8
+    ship.size = "Huge"  # 1,041m+ length - same as Odyssey
+    ship.cargo_space = 600
+    ship.upgrade_space = 250
+    
+    # Navigation - Mark XV systems
     ship.sensor_range = 15
     ship.turn_speed = 3
     ship.impulse_speed = 5
-    ship.warp_speed = 9.8
+    ship.warp_speed = 9.9
     
-    ship.max_hull = 2150
-    ship.hull = 2150
-    ship.armor = 82
-    ship.shields = {'fore': 880, 'aft': 700, 'port': 790, 'starboard': 790}
+    # Defenses - Mark XV shields
+    ship.max_hull = 2200
+    ship.hull = 2200
+    ship.armor = 85
+    # Mk XV Shields (scaled 2.67x like other ships)
+    ship.shields = {'fore': 2670, 'aft': 2135, 'port': 2400, 'starboard': 2400}
     ship.max_shields = ship.shields.copy()
     
-    ship.warp_core_max_power = 585
-    ship.power_distribution = {'engines': 195, 'shields': 195, 'weapons': 195}
+    # Power - Mark XV Warp Core
+    ship.warp_core_max_power = 600
+    ship.power_distribution = {'engines': 200, 'shields': 200, 'weapons': 200}
     
+    # Weapons - 22 Mark XV Phaser Arrays (front-heavy dreadnought configuration)
+    # Mk XV Phasers: 15 + (15-1)*5 = 85 damage per array
     ship.weapon_arrays = [
-        WeaponArray('phaser', mark=9, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
-        WeaponArray('phaser', mark=8, firing_arcs=['aft', 'port', 'starboard'], upgrade_space_cost=5)
+        # FORE ARC - 8 arrays (primary firepower)
+        WeaponArray('phaser', mark=15, firing_arcs=['fore'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['fore'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['fore'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['fore'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['fore'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['fore'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['fore', 'port'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['fore', 'starboard'], upgrade_space_cost=5),
+        
+        # AFT ARC - 4 arrays (rear defense)
+        WeaponArray('phaser', mark=15, firing_arcs=['aft'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['aft'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['aft', 'port'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['aft', 'starboard'], upgrade_space_cost=5),
+        
+        # PORT ARC - 5 arrays (broadside)
+        WeaponArray('phaser', mark=15, firing_arcs=['port'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['port'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['port'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['port'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['port'], upgrade_space_cost=5),
+        
+        # STARBOARD ARC - 5 arrays (broadside)
+        WeaponArray('phaser', mark=15, firing_arcs=['starboard'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['starboard'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['starboard'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['starboard'], upgrade_space_cost=5),
+        WeaponArray('phaser', mark=15, firing_arcs=['starboard'], upgrade_space_cost=5),
     ]
+    
+    # Torpedoes - 6 Mark XV Quantum Torpedo Launchers (front-heavy)
+    # Mk XV Quantum: 80 + (15-1)*10 = 220 damage per launcher
     ship.torpedo_bays = [
-        TorpedoBay('quantum', mark=10, firing_arcs=['fore'], max_torpedoes=230, upgrade_space_cost=10)
+        # FORE ARC - 4 launchers (devastating alpha strike)
+        TorpedoBay('quantum', mark=15, firing_arcs=['fore'], max_torpedoes=250, upgrade_space_cost=10),
+        TorpedoBay('quantum', mark=15, firing_arcs=['fore'], max_torpedoes=250, upgrade_space_cost=10),
+        TorpedoBay('quantum', mark=15, firing_arcs=['fore'], max_torpedoes=250, upgrade_space_cost=10),
+        TorpedoBay('quantum', mark=15, firing_arcs=['fore'], max_torpedoes=250, upgrade_space_cost=10),
+        
+        # AFT ARC - 2 launchers (rear defense)
+        TorpedoBay('quantum', mark=15, firing_arcs=['aft'], max_torpedoes=200, upgrade_space_cost=10),
+        TorpedoBay('quantum', mark=15, firing_arcs=['aft'], max_torpedoes=200, upgrade_space_cost=10),
     ]
     
     ship.max_crew = 2500
