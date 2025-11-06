@@ -4940,20 +4940,26 @@ class CombatTestScreen:
         sprite_y = y
         sprite_x = x + 170  # Center in panel
         
-        # Get the ship's sprite (facing 0 - pointing right)
-        # Use cached sprite if available
-        scale_factor = 1.5  # Larger for display
-        if ship.ship_class in self.ship_sprite_cache and scale_factor in self.ship_sprite_cache[ship.ship_class]:
-            ship_sprite = self.ship_sprite_cache[ship.ship_class][scale_factor][0]  # Facing 0
-        else:
-            # Load sprite if not cached
+        # Get the ship's sprite and rotate to point up
+        # Load sprite if not cached
+        if ship.ship_class not in self.ship_sprite_cache:
             self._load_ship_sprite(ship)
-            if ship.ship_class in self.ship_sprite_cache and scale_factor in self.ship_sprite_cache[ship.ship_class]:
-                ship_sprite = self.ship_sprite_cache[ship.ship_class][scale_factor][0]
-            else:
-                # Fallback: create placeholder
-                ship_sprite = pygame.Surface((100, 100), pygame.SRCALPHA)
-                pygame.draw.circle(ship_sprite, LCARS_COLORS['blue'], (50, 50), 40, 2)
+        
+        # Get sprite from cache - use Medium size (1.0 scale)
+        ship_sprite = None
+        if ship.ship_class in self.ship_sprite_cache:
+            # Get the 1.0 scale factor sprites (Medium size)
+            if 1.0 in self.ship_sprite_cache[ship.ship_class]:
+                # Get facing 0 sprite (points right in hex grid)
+                base_sprite = self.ship_sprite_cache[ship.ship_class][1.0][0]
+                # Rotate 90 degrees counter-clockwise to point up
+                ship_sprite = pygame.transform.rotate(base_sprite, 90)
+        
+        # Fallback if sprite loading failed
+        if ship_sprite is None:
+            ship_sprite = pygame.Surface((100, 100), pygame.SRCALPHA)
+            pygame.draw.circle(ship_sprite, LCARS_COLORS['blue'], (50, 50), 40, 2)
+            print(f"⚠ Warning: Could not load sprite for {ship.ship_class}, using placeholder")
         
         # Draw the sprite
         sprite_rect = ship_sprite.get_rect(center=(sprite_x, sprite_y + 80))
@@ -4968,49 +4974,49 @@ class CombatTestScreen:
         fore_torpedoes = sum(1 for t in ship.torpedo_bays if 'fore' in t.firing_arcs)
         aft_torpedoes = sum(1 for t in ship.torpedo_bays if 'aft' in t.firing_arcs)
         
-        # Draw weapon icons around the sprite
+        # Draw weapon icons around the sprite (now pointing UP)
         icon_size = 4
         sprite_width = ship_sprite.get_width()
         sprite_height = ship_sprite.get_height()
         
-        # Fore weapons (right side of sprite since facing=0 points right)
+        # Fore weapons (top of sprite since now pointing up)
         if fore_phasers > 0:
             for i in range(min(fore_phasers, 6)):
-                wx = sprite_rect.right + 5
-                wy = sprite_rect.centery - 20 + (i * 7)
+                wx = sprite_rect.centerx - 20 + (i * 7)
+                wy = sprite_rect.top - 5
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         if fore_torpedoes > 0:
             for i in range(min(fore_torpedoes, 3)):
-                wx = sprite_rect.right + 10
-                wy = sprite_rect.centery - 10 + (i * 10)
-                points = [(wx + 5, wy), (wx - 3, wy - 4), (wx - 3, wy + 4)]
+                wx = sprite_rect.centerx - 10 + (i * 10)
+                wy = sprite_rect.top - 10
+                points = [(wx, wy - 5), (wx - 4, wy + 3), (wx + 4, wy + 3)]
                 pygame.draw.polygon(self.screen, LCARS_COLORS['orange'], points)
         
-        # Aft weapons (left side)
+        # Aft weapons (bottom of sprite)
         if aft_phasers > 0:
             for i in range(min(aft_phasers, 4)):
-                wx = sprite_rect.left - 5
-                wy = sprite_rect.centery - 12 + (i * 8)
+                wx = sprite_rect.centerx - 12 + (i * 8)
+                wy = sprite_rect.bottom + 5
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         if aft_torpedoes > 0:
             for i in range(min(aft_torpedoes, 2)):
-                wx = sprite_rect.left - 10
-                wy = sprite_rect.centery - 5 + (i * 10)
-                points = [(wx - 5, wy), (wx + 3, wy - 4), (wx + 3, wy + 4)]
+                wx = sprite_rect.centerx - 5 + (i * 10)
+                wy = sprite_rect.bottom + 10
+                points = [(wx, wy + 5), (wx - 4, wy - 3), (wx + 4, wy - 3)]
                 pygame.draw.polygon(self.screen, LCARS_COLORS['orange'], points)
         
-        # Port weapons (top side since sprite is rotated)
+        # Port weapons (left side)
         if port_phasers > 0:
             for i in range(min(port_phasers, 4)):
-                wx = sprite_rect.centerx - 15 + (i * 10)
-                wy = sprite_rect.top - 5
+                wx = sprite_rect.left - 5
+                wy = sprite_rect.centery - 15 + (i * 10)
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         
-        # Starboard weapons (bottom side)
+        # Starboard weapons (right side)
         if starboard_phasers > 0:
             for i in range(min(starboard_phasers, 4)):
-                wx = sprite_rect.centerx - 15 + (i * 10)
-                wy = sprite_rect.bottom + 5
+                wx = sprite_rect.right + 5
+                wy = sprite_rect.centery - 15 + (i * 10)
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         
         y = sprite_rect.bottom + 20
