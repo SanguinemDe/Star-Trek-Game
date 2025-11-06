@@ -1072,8 +1072,8 @@ class CombatTestScreen:
         self.animation_start_facing = None  # Starting facing for rotation
         self.animation_end_facing = None  # Ending facing for rotation
         self.animation_progress = 0.0  # 0.0 to 1.0
-        self.animation_speed = 0.5  # Speed multiplier (LOWER = slower/smoother - 0.5 = 2 seconds per hex)
-        self.rotation_speed = 0.7  # Rotation animation speed (can be different from movement)
+        self.animation_speed = 1.0  # Speed multiplier (1.0 = 1 second per hex movement)
+        self.rotation_speed = 1.0  # Rotation animation speed (1.0 = 1 second per 60° turn)
         self.animation_callback = None  # Function to call when animation completes
         self.pending_ai_moves = []  # Queue of AI moves to execute (for sequential animations)
         
