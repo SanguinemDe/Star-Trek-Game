@@ -4951,25 +4951,104 @@ class CombatTestScreen:
         if ship.ship_class not in self.ship_sprite_cache:
             self._load_ship_sprite(ship)
         
-        # Get sprite from cache - use Medium size (1.0 scale)
+        # Get sprite from cache - use Large size (1.3 scale) for better visibility
         ship_sprite = None
         if ship.ship_class in self.ship_sprite_cache:
-            # Get the 1.0 scale factor sprites (Medium size)
-            if 1.0 in self.ship_sprite_cache[ship.ship_class]:
+            # Get the 1.3 scale factor sprites (Large size)
+            if 1.3 in self.ship_sprite_cache[ship.ship_class]:
                 # Get facing 0 sprite (points right in hex grid)
-                base_sprite = self.ship_sprite_cache[ship.ship_class][1.0][0]
+                base_sprite = self.ship_sprite_cache[ship.ship_class][1.3][0]
                 # Rotate 90 degrees counter-clockwise to point up
                 ship_sprite = pygame.transform.rotate(base_sprite, 90)
         
         # Fallback if sprite loading failed
         if ship_sprite is None:
-            ship_sprite = pygame.Surface((100, 100), pygame.SRCALPHA)
-            pygame.draw.circle(ship_sprite, LCARS_COLORS['blue'], (50, 50), 40, 2)
+            ship_sprite = pygame.Surface((150, 150), pygame.SRCALPHA)
+            pygame.draw.circle(ship_sprite, LCARS_COLORS['blue'], (75, 75), 60, 2)
             print(f"⚠ Warning: Could not load sprite for {ship.ship_class}, using placeholder")
         
         # Draw the sprite
-        sprite_rect = ship_sprite.get_rect(center=(sprite_x, sprite_y + 80))
+        sprite_rect = ship_sprite.get_rect(center=(sprite_x, sprite_y + 100))
         self.screen.blit(ship_sprite, sprite_rect)
+        
+        # Draw shield brackets around ship
+        # Calculate shield health percentages and colors
+        def get_shield_color(current, max_shield):
+            if max_shield == 0:
+                return None
+            pct = (current / max_shield) * 100
+            if pct > 66:
+                return LCARS_COLORS['green']
+            elif pct > 33:
+                return get_warning_color()
+            elif pct > 0:
+                return LCARS_COLORS['alert_red']
+            else:
+                return None  # No shield, don't draw
+        
+        bracket_offset = 25
+        bracket_length = 40
+        bracket_width = 3
+        
+        # Fore shield (top bracket)
+        fore_color = get_shield_color(ship.shields['fore'], ship.max_shields['fore'])
+        if fore_color:
+            # Top bracket - inverted U shape
+            top_y = sprite_rect.top - bracket_offset
+            pygame.draw.line(self.screen, fore_color, 
+                           (sprite_rect.centerx - bracket_length//2, top_y), 
+                           (sprite_rect.centerx - bracket_length//2, top_y - 12), bracket_width)
+            pygame.draw.line(self.screen, fore_color,
+                           (sprite_rect.centerx - bracket_length//2, top_y - 12),
+                           (sprite_rect.centerx + bracket_length//2, top_y - 12), bracket_width)
+            pygame.draw.line(self.screen, fore_color,
+                           (sprite_rect.centerx + bracket_length//2, top_y - 12),
+                           (sprite_rect.centerx + bracket_length//2, top_y), bracket_width)
+        
+        # Aft shield (bottom bracket)
+        aft_color = get_shield_color(ship.shields['aft'], ship.max_shields['aft'])
+        if aft_color:
+            # Bottom bracket - U shape
+            bottom_y = sprite_rect.bottom + bracket_offset
+            pygame.draw.line(self.screen, aft_color,
+                           (sprite_rect.centerx - bracket_length//2, bottom_y),
+                           (sprite_rect.centerx - bracket_length//2, bottom_y + 12), bracket_width)
+            pygame.draw.line(self.screen, aft_color,
+                           (sprite_rect.centerx - bracket_length//2, bottom_y + 12),
+                           (sprite_rect.centerx + bracket_length//2, bottom_y + 12), bracket_width)
+            pygame.draw.line(self.screen, aft_color,
+                           (sprite_rect.centerx + bracket_length//2, bottom_y + 12),
+                           (sprite_rect.centerx + bracket_length//2, bottom_y), bracket_width)
+        
+        # Port shield (left bracket)
+        port_color = get_shield_color(ship.shields['port'], ship.max_shields['port'])
+        if port_color:
+            # Left bracket - [ shape
+            left_x = sprite_rect.left - bracket_offset
+            pygame.draw.line(self.screen, port_color,
+                           (left_x, sprite_rect.centery - bracket_length//2),
+                           (left_x - 12, sprite_rect.centery - bracket_length//2), bracket_width)
+            pygame.draw.line(self.screen, port_color,
+                           (left_x - 12, sprite_rect.centery - bracket_length//2),
+                           (left_x - 12, sprite_rect.centery + bracket_length//2), bracket_width)
+            pygame.draw.line(self.screen, port_color,
+                           (left_x - 12, sprite_rect.centery + bracket_length//2),
+                           (left_x, sprite_rect.centery + bracket_length//2), bracket_width)
+        
+        # Starboard shield (right bracket)
+        starboard_color = get_shield_color(ship.shields['starboard'], ship.max_shields['starboard'])
+        if starboard_color:
+            # Right bracket - ] shape
+            right_x = sprite_rect.right + bracket_offset
+            pygame.draw.line(self.screen, starboard_color,
+                           (right_x, sprite_rect.centery - bracket_length//2),
+                           (right_x + 12, sprite_rect.centery - bracket_length//2), bracket_width)
+            pygame.draw.line(self.screen, starboard_color,
+                           (right_x + 12, sprite_rect.centery - bracket_length//2),
+                           (right_x + 12, sprite_rect.centery + bracket_length//2), bracket_width)
+            pygame.draw.line(self.screen, starboard_color,
+                           (right_x + 12, sprite_rect.centery + bracket_length//2),
+                           (right_x, sprite_rect.centery + bracket_length//2), bracket_width)
         
         # Draw weapon placement indicators on the sprite
         # Count weapons per arc
@@ -5025,7 +5104,7 @@ class CombatTestScreen:
                 wy = sprite_rect.centery - 15 + (i * 10)
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         
-        y = sprite_rect.bottom + 20
+        y = sprite_rect.bottom + 35
         
         # Hull status
         hull_pct = int((ship.hull / ship.max_hull) * 100)
