@@ -274,20 +274,57 @@ class ShipAI:
     
     def decide_movement(self, movement_points):
         """
-        Decide movement actions for this turn based on tactical situation
+        AI Decision-Making System: Movement Strategy
         
-        Movement priorities:
-        1. Retreat if hull is critical
-        2. Rotate shields if current facing is weak
-        3. Turn to bring weapons on target
-        4. Maneuver to optimal range
-        5. Tactical positioning at optimal range
+        This function implements a priority-based tactical movement system that evaluates
+        the combat situation and generates a sequence of legal movement commands.
+        
+        MOVEMENT PRIORITIES (executed in order):
+        ----------------------------------------
+        1. RETREAT (hull < 30%):
+           - Back away while keeping weapons on target
+           - Defensive maneuvering to minimize incoming fire
+        
+        2. SHIELD ROTATION (shields critically weak):
+           - Move + turn to present fresh shield facing
+           - Only if specific shield arc < 20% and others > 50%
+        
+        3. WEAPON POSITIONING (target not in firing arc):
+           - Turn to bring weapons to bear
+           - Only executes if already at reasonable range (±2 hexes)
+        
+        4. RANGE MANAGEMENT (distance != preferred_range):
+           - Close in if too far (aggressive ships only)
+           - Back away if too close (all ships)
+           - Tries to maintain optimal firing distance
+        
+        5. TACTICAL MANEUVERING (use remaining MP):
+           - Evasive turns: forward + turn (harder to hit: +5% per hex)
+           - Aggressive advances: maintain pressure
+           - ALWAYS uses ALL remaining movement points
+        
+        TURNING RULES (game mechanics):
+        -------------------------------
+        - Must move before turning (can't turn as first action)
+        - Can only turn ONCE per hex moved
+        - Valid: [forward, turn_left, forward, turn_right]
+        - Invalid: [turn_left, forward] or [forward, turn_left, turn_right]
         
         Args:
-            movement_points: Number of movement points available this turn
+            movement_points (int): Number of movement points available this turn
             
         Returns:
-            list: List of movement commands ['forward', 'backward', 'turn_left', 'turn_right']
+            list: Sequence of movement commands ['forward', 'backward', 'turn_left', 'turn_right']
+                  Returns empty list [] if no moves possible
+        
+        Example Output:
+            ['forward', 'turn_left', 'forward', 'turn_right', 'forward']
+            - Moves forward (1 MP)
+            - Turns left (1 MP) 
+            - Moves forward (1 MP)
+            - Turns right (1 MP)
+            - Moves forward (1 MP)
+            Total: 5 MP used
         """
         try:
             # Validate inputs

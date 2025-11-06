@@ -1331,19 +1331,64 @@ class AdvancedShip:
         return [(self.hex_q, self.hex_r)]
     
     def is_multi_hex(self):
-        """Check if this ship occupies multiple hexes"""
+        """
+        Check if this ship occupies multiple hexes on the grid
+        
+        Returns:
+            bool: True if ship is Very Large or Huge (occupies 7 hexes),
+                  False if Small/Medium/Large (occupies 1 hex)
+        """
         return self.size in ["Very Large", "Huge"]
+    
+    # ========================================================================
+    # COLLISION DETECTION SYSTEM
+    # ========================================================================
     
     def would_collide_at(self, new_q, new_r, all_ships):
         """
-        Check if moving to new position would cause collision with any ship
+        Multi-Hex Collision Detection
+        
+        Checks if moving this ship to a new position would cause it to overlap
+        with any other ship. For multi-hex ships (Very Large/Huge), ALL 7 hexes
+        are checked against ALL hexes of other ships.
+        
+        This is the authoritative collision detection method - all movement systems
+        should call this before executing a move.
+        
+        ALGORITHM:
+        ----------
+        1. Temporarily calculate what hexes this ship would occupy at new position
+        2. For each hex we would occupy:
+           3. For each other ship in combat:
+              4. Get all hexes that ship occupies
+              5. Check for overlap
+              6. If overlap found, return collision details
+        7. If no overlaps found, movement is legal
+        
+        SHIP SIZES:
+        -----------
+        - Small/Medium/Large: 1 hex (center only)
+        - Very Large/Huge: 7 hexes (center + 6 neighbors)
         
         Args:
-            new_q, new_r: Target hex coordinates (center hex for multi-hex ships)
-            all_ships: List of all ships in combat (including self)
+            new_q (int): Target Q coordinate (center hex for multi-hex ships)
+            new_r (int): Target R coordinate (center hex for multi-hex ships)
+            all_ships (list): All ships currently in combat (including self)
             
         Returns:
-            (would_collide: bool, blocking_ship: Ship or None, colliding_hexes: list)
+            tuple: (would_collide, blocking_ship, colliding_hexes)
+                - would_collide (bool): True if movement would cause collision
+                - blocking_ship (Ship or None): The ship blocking movement
+                - colliding_hexes (list): List of (q,r) tuples where collision occurs
+        
+        Example Usage:
+            >>> ship = enterprise  # Huge ship at (5, 3)
+            >>> would_collide, blocker, hexes = ship.would_collide_at(6, 3, all_ships)
+            >>> if would_collide:
+            >>>     print(f"Can't move! {blocker.name} is blocking at {hexes}")
+            >>> else:
+            >>>     # Safe to move
+            >>>     ship.hex_q, ship.hex_r = 6, 3
         """
         # Temporarily calculate what hexes we would occupy at new position
         old_q, old_r = self.hex_q, self.hex_r
@@ -1371,14 +1416,27 @@ class AdvancedShip:
     
     def can_move_to(self, new_q, new_r, all_ships):
         """
-        Simplified collision check - returns True if move is legal
+        Simplified Collision Check (Boolean Result)
+        
+        Convenience wrapper around would_collide_at() that returns a simple
+        boolean answer. Use this when you only need to know if a move is legal,
+        without needing details about what's blocking it.
         
         Args:
-            new_q, new_r: Target hex coordinates
-            all_ships: List of all ships in combat
+            new_q (int): Target Q coordinate
+            new_r (int): Target R coordinate
+            all_ships (list): All ships in combat
             
         Returns:
-            bool: True if can move to position without collision
+            bool: True if movement is legal (no collision)
+                  False if movement would cause collision
+        
+        Example Usage:
+            >>> if ship.can_move_to(new_q, new_r, all_ships):
+            >>>     ship.hex_q, ship.hex_r = new_q, new_r
+            >>>     print("Moved successfully!")
+            >>> else:
+            >>>     print("Movement blocked!")
         """
         would_collide, _, _ = self.would_collide_at(new_q, new_r, all_ships)
         return not would_collide

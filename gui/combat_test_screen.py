@@ -1824,8 +1824,17 @@ class CombatTestScreen:
         # Don't log housekeeping
         self.advance_phase()
     
+    # ========================================================================
+    # TURN MANAGEMENT
+    # ========================================================================
+    
     def get_current_acting_ship(self):
-        """Get the ship that should act in current phase"""
+        """
+        Get the ship that should act in the current phase
+        
+        Returns:
+            Ship: The ship whose turn it is, or None if all ships have acted
+        """
         if self.current_ship_index < len(self.initiative_order):
             return self.initiative_order[self.current_ship_index]
         return None
@@ -1959,67 +1968,9 @@ class CombatTestScreen:
         self.add_to_log(f"  Result: Hex ({q},{r}) is CLEAR - movement allowed")
         return None
     
-    def would_collide_multi_hex(self, moving_ship, new_center_q, new_center_r):
-        """
-        DEPRECATED: Use ship.would_collide_at() instead.
-        This method is kept for backward compatibility but collision detection
-        has been moved into the AdvancedShip class itself.
-        
-        Check if moving a multi-hex ship to a new center position would cause ANY collision
-        
-        For multi-hex ships (Very Large/Huge), checks if ANY of the hexes they would occupy
-        at the new position would collide with ANY hexes occupied by other ships.
-        
-        Args:
-            moving_ship: The ship attempting to move
-            new_center_q: New Q coordinate for ship's center
-            new_center_r: New R coordinate for ship's center
-            
-        Returns:
-            (would_collide: bool, blocking_ship: Ship or None, colliding_hexes: list of tuples)
-        """
-        # If ship doesn't have multi-hex support, fall back to simple check
-        if not hasattr(moving_ship, 'get_occupied_hexes'):
-            blocking = self.is_hex_occupied(new_center_q, new_center_r, exclude_ship=moving_ship)
-            return (blocking is not None, blocking, [(new_center_q, new_center_r)] if blocking else [])
-        
-        # Calculate what hexes the moving ship would occupy at new position
-        # Temporarily update position to calculate
-        old_q, old_r = moving_ship.hex_q, moving_ship.hex_r
-        moving_ship.hex_q = new_center_q
-        moving_ship.hex_r = new_center_r
-        would_occupy = moving_ship.get_occupied_hexes()
-        moving_ship.hex_q = old_q
-        moving_ship.hex_r = old_r
-        
-        self.add_to_log(f"MULTI-HEX COLLISION CHECK: {moving_ship.name} moving to ({new_center_q},{new_center_r})")
-        self.add_to_log(f"  {moving_ship.name} would occupy: {would_occupy}")
-        
-        # Check each hex the moving ship would occupy
-        for test_hex_q, test_hex_r in would_occupy:
-            # Check if this hex collides with any other ship
-            for other_ship in self.all_ships:
-                if other_ship == moving_ship:
-                    continue
-                    
-                # Skip destroyed ships
-                if hasattr(other_ship, 'hull') and other_ship.hull <= 0:
-                    continue
-                
-                # Get hexes occupied by other ship
-                if hasattr(other_ship, 'get_occupied_hexes'):
-                    other_hexes = other_ship.get_occupied_hexes()
-                else:
-                    other_hexes = [(other_ship.hex_q, other_ship.hex_r)]
-                
-                # Check for overlap
-                if (test_hex_q, test_hex_r) in other_hexes:
-                    self.add_to_log(f"  *** COLLISION! {moving_ship.name}'s hex ({test_hex_q},{test_hex_r}) would overlap with {other_ship.name}!")
-                    self.add_to_log(f"    {other_ship.name} occupies: {other_hexes}")
-                    return (True, other_ship, [(test_hex_q, test_hex_r)])
-        
-        self.add_to_log(f"  No collision - all hexes clear")
-        return (False, None, [])
+    # ========================================================================
+    # SHIP MOVEMENT METHODS
+    # ========================================================================
     
     def move_forward(self, ship):
         """Move ship forward one hex (costs 1 movement point)"""
@@ -2250,7 +2201,18 @@ class CombatTestScreen:
     # ═══════════════════════════════════════════════════════════════════
     
     def execute_ai_movement(self):
-        """Execute AI-controlled ship movement"""
+        """
+        Execute AI-Controlled Ship Movement
+        
+        This method handles the entire movement phase for AI-controlled ships:
+        1. Gets movement decisions from the ship's AI controller
+        2. Executes all moves immediately (no animation delays)
+        3. Syncs visual position to match final hex coordinates
+        4. Verifies no collisions occurred during movement
+        
+        AI moves are executed instantly to keep combat flowing smoothly.
+        The position sync at the end ensures ships render at correct locations.
+        """
         ship = self.get_current_acting_ship()
         if not ship or ship == self.player_ship:
             self.complete_ship_action()
