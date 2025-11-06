@@ -2541,19 +2541,19 @@ class CombatTestScreen:
             # Draw connecting line from center
             pygame.draw.line(screen, color, (center_x, center_y), (opt_x, opt_y), 2)
             
-            # Draw label
-            label_font = pygame.font.Font(None, 22)
+            # Draw label (smaller font to fit in circles)
+            label_font = pygame.font.Font(None, 16)
             label_text = label_font.render(label, True, LCARS_COLORS['black'])
-            label_rect = label_text.get_rect(center=(int(opt_x), int(opt_y)))
+            label_rect = label_text.get_rect(center=(int(opt_x), int(opt_y) - 6))
             screen.blit(label_text, label_rect)
             
             # Draw smaller label below
-            sub_font = pygame.font.Font(None, 16)
+            sub_font = pygame.font.Font(None, 13)
             if option['priority'] != 'clear':
                 sub_text = sub_font.render("TARGET", True, LCARS_COLORS['black'])
             else:
                 sub_text = sub_font.render("TARGET", True, LCARS_COLORS['black'])
-            sub_rect = sub_text.get_rect(center=(int(opt_x), int(opt_y) + 12))
+            sub_rect = sub_text.get_rect(center=(int(opt_x), int(opt_y) + 8))
             screen.blit(sub_text, sub_rect)
     
     def get_available_targets(self, attacker):
