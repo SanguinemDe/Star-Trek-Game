@@ -1,10 +1,14 @@
-Enemy ships config: [('Yorktown', 1)]
-Processing Yorktown, requesting 1 ships
-Found function_name: create_yorktown_class
-Creating ship 1/1
-Created Yorktown-1 at hex (5, -2), pixel (1478.1281292110202, 431.0)
+Enemy ships config: [('Miranda', 3)]
+Processing Miranda, requesting 3 ships
+Found function_name: create_miranda_class
+Creating ship 1/3
+Created Miranda-1 at hex (5, -2), pixel (1478.1281292110202, 431.0)
+Creating ship 2/3
+Created Miranda-2 at hex (7, -2), pixel (1616.6921938165306, 431.0)
+Creating ship 3/3
+Created Miranda-3 at hex (9, -2), pixel (1755.2562584220407, 431.0)
 
-Total enemy ships created: 1
-Enemy ship names: ['Yorktown-1']
-Total ships in all_ships: 2
-All ship names: ['Enterprise', 'Yorktown-1']
+Total enemy ships created: 3
+Enemy ship names: ['Miranda-1', 'Miranda-2', 'Miranda-3']
+Total ships in all_ships: 4
+All ship names: ['Enterprise', 'Miranda-1', 'Miranda-2', 'Miranda-3']

@@ -5126,42 +5126,97 @@ class CombatTestScreen:
             pygame.draw.rect(self.screen, LCARS_COLORS['light_blue'], thumb_rect, 1)
     
     def _draw_power_tab(self, x, y):
-        """Draw POWER tab - power distribution (placeholder for now)"""
+        """Draw POWER tab - power distribution with static triangle display"""
         ship = self.player_ship
         
         # Power header
-        power_title = self.font_small.render("POWER SYSTEMS", True, get_accent_color())
+        power_title = self.font_small.render("POWER DISTRIBUTION", True, get_accent_color())
         self.screen.blit(power_title, (x, y))
         y += 28
         
-        # Placeholder text
-        placeholder = self.font_tiny.render("Power management system", True, LCARS_COLORS['text_gray'])
-        self.screen.blit(placeholder, (x, y))
+        # Get current power distribution
+        engines = ship.power_distribution['engines']
+        shields = ship.power_distribution['shields']
+        weapons = ship.power_distribution['weapons']
+        total_allocated = engines + shields + weapons
+        available = ship.get_available_power()
+        
+        # Show warp core status
+        warp_core_health = ship.systems.get('warp_core', 100)
+        warp_text = f"WARP CORE: {warp_core_health}%"
+        warp_color = LCARS_COLORS['green'] if warp_core_health > 75 else get_warning_color() if warp_core_health > 50 else LCARS_COLORS['alert_red']
+        warp_surface = self.font_tiny.render(warp_text, True, warp_color)
+        self.screen.blit(warp_surface, (x, y))
         y += 18
         
-        placeholder2 = self.font_tiny.render("coming soon...", True, LCARS_COLORS['text_gray'])
-        self.screen.blit(placeholder2, (x, y))
+        avail_text = f"AVAILABLE: {total_allocated}/{available}"
+        avail_surface = self.font_tiny.render(avail_text, True, LCARS_COLORS['light_blue'])
+        self.screen.blit(avail_surface, (x, y))
         y += 28
         
-        # Show some basic power info
-        power_text = f"WARP CORE OUTPUT: 100%"
-        power_surface = self.font_tiny.render(power_text, True, LCARS_COLORS['light_blue'])
-        self.screen.blit(power_surface, (x, y))
-        y += 24
+        # Show current power distribution with values
+        engine_text = f"ENGINES: {engines}"
+        engine_color = LCARS_COLORS['green']
+        engine_surface = self.font_tiny.render(engine_text, True, engine_color)
+        self.screen.blit(engine_surface, (x, y))
+        y += 18
         
-        # Power distribution sections
-        distributions = [
-            ("WEAPONS", 25),
-            ("SHIELDS", 25),
-            ("ENGINES", 25),
-            ("AUXILIARY", 25)
-        ]
+        shields_text = f"SHIELDS: {shields}"
+        shields_color = LCARS_COLORS['blue']
+        shields_surface = self.font_tiny.render(shields_text, True, shields_color)
+        self.screen.blit(shields_surface, (x, y))
+        y += 18
         
-        for system, pct in distributions:
-            dist_text = f"{system}: {pct}%"
-            dist_surface = self.font_tiny.render(dist_text, True, LCARS_COLORS['purple'])
-            self.screen.blit(dist_surface, (x, y))
-            y += 18
+        weapons_text = f"WEAPONS: {weapons}"
+        weapons_color = LCARS_COLORS['alert_red']
+        weapons_surface = self.font_tiny.render(weapons_text, True, weapons_color)
+        self.screen.blit(weapons_surface, (x, y))
+        y += 28
+        
+        # Draw small static power triangle
+        triangle_size = 200
+        triangle_x = x + 170  # Center in panel
+        triangle_y = y + 100
+        
+        # Define triangle vertices (equilateral)
+        height = triangle_size * 0.866
+        top = (triangle_x, triangle_y - int(height * 0.6))  # Weapons
+        bottom_right = (triangle_x + triangle_size // 2, triangle_y + int(height * 0.4))  # Shields
+        bottom_left = (triangle_x - triangle_size // 2, triangle_y + int(height * 0.4))  # Engines
+        
+        # Draw triangle outline
+        pygame.draw.polygon(self.screen, LCARS_COLORS['bg_dark'], [top, bottom_right, bottom_left])
+        pygame.draw.polygon(self.screen, get_accent_color(), [top, bottom_right, bottom_left], 2)
+        
+        # Calculate control point position from current power allocation
+        if total_allocated > 0:
+            w_ratio = weapons / total_allocated
+            s_ratio = shields / total_allocated
+            e_ratio = engines / total_allocated
+            
+            # Barycentric to Cartesian conversion
+            control_x = w_ratio * top[0] + s_ratio * bottom_right[0] + e_ratio * bottom_left[0]
+            control_y = w_ratio * top[1] + s_ratio * bottom_right[1] + e_ratio * bottom_left[1]
+            
+            # Draw lines from control point to vertices
+            pygame.draw.line(self.screen, LCARS_COLORS['alert_red'], (control_x, control_y), top, 1)
+            pygame.draw.line(self.screen, LCARS_COLORS['blue'], (control_x, control_y), bottom_right, 1)
+            pygame.draw.line(self.screen, LCARS_COLORS['green'], (control_x, control_y), bottom_left, 1)
+            
+            # Draw control point
+            control_size = 6
+            pygame.draw.circle(self.screen, LCARS_COLORS['yellow'], (int(control_x), int(control_y)), control_size)
+            pygame.draw.circle(self.screen, get_accent_color(), (int(control_x), int(control_y)), control_size, 1)
+        
+        # Draw small system labels
+        w_label = self.font_tiny.render("W", True, LCARS_COLORS['alert_red'])
+        self.screen.blit(w_label, (top[0] - w_label.get_width() // 2, top[1] - 20))
+        
+        s_label = self.font_tiny.render("S", True, LCARS_COLORS['blue'])
+        self.screen.blit(s_label, (bottom_right[0] - s_label.get_width() // 2, bottom_right[1] + 10))
+        
+        e_label = self.font_tiny.render("E", True, LCARS_COLORS['green'])
+        self.screen.blit(e_label, (bottom_left[0] - e_label.get_width() // 2, bottom_left[1] + 10))
     
     def _draw_damage_tab(self, x, y):
         """Draw DAMAGE tab - system health bars with color coding"""
