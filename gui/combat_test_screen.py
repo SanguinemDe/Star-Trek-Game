@@ -4921,7 +4921,7 @@ class CombatTestScreen:
             self._draw_damage_tab(content_x, y)
     
     def _draw_status_tab(self, x, y):
-        """Draw STATUS tab - graphical ship schematic with weapon placements"""
+        """Draw STATUS tab - ship sprite with weapon placements"""
         ship = self.player_ship
         
         # Ship name and info header
@@ -4936,42 +4936,30 @@ class CombatTestScreen:
         self.screen.blit(class_surface, (x, y))
         y += 24
         
-        # Draw ship schematic
-        schematic_y = y
-        schematic_x = x + 170  # Center in panel
+        # Draw ship sprite
+        sprite_y = y
+        sprite_x = x + 170  # Center in panel
         
-        # Draw basic ship outline (top-down view)
-        # Saucer section (ellipse)
-        saucer_width = 80
-        saucer_height = 100
-        saucer_rect = pygame.Rect(schematic_x - saucer_width // 2, schematic_y, saucer_width, saucer_height)
-        pygame.draw.ellipse(self.screen, LCARS_COLORS['bg_medium'], saucer_rect)
-        pygame.draw.ellipse(self.screen, LCARS_COLORS['blue'], saucer_rect, 2)
+        # Get the ship's sprite (facing 0 - pointing right)
+        # Use cached sprite if available
+        scale_factor = 1.5  # Larger for display
+        if ship.ship_class in self.ship_sprite_cache and scale_factor in self.ship_sprite_cache[ship.ship_class]:
+            ship_sprite = self.ship_sprite_cache[ship.ship_class][scale_factor][0]  # Facing 0
+        else:
+            # Load sprite if not cached
+            self._load_ship_sprite(ship)
+            if ship.ship_class in self.ship_sprite_cache and scale_factor in self.ship_sprite_cache[ship.ship_class]:
+                ship_sprite = self.ship_sprite_cache[ship.ship_class][scale_factor][0]
+            else:
+                # Fallback: create placeholder
+                ship_sprite = pygame.Surface((100, 100), pygame.SRCALPHA)
+                pygame.draw.circle(ship_sprite, LCARS_COLORS['blue'], (50, 50), 40, 2)
         
-        # Engineering hull (rectangle)
-        eng_width = 40
-        eng_height = 80
-        eng_x = schematic_x - eng_width // 2
-        eng_y = schematic_y + saucer_height - 20
-        pygame.draw.rect(self.screen, LCARS_COLORS['bg_medium'], (eng_x, eng_y, eng_width, eng_height))
-        pygame.draw.rect(self.screen, LCARS_COLORS['blue'], (eng_x, eng_y, eng_width, eng_height), 2)
+        # Draw the sprite
+        sprite_rect = ship_sprite.get_rect(center=(sprite_x, sprite_y + 80))
+        self.screen.blit(ship_sprite, sprite_rect)
         
-        # Nacelles (elongated rectangles)
-        nacelle_width = 15
-        nacelle_height = 90
-        nacelle_offset = 50
-        # Port nacelle
-        pygame.draw.rect(self.screen, LCARS_COLORS['bg_medium'], 
-                        (schematic_x - nacelle_offset - nacelle_width, schematic_y + 60, nacelle_width, nacelle_height))
-        pygame.draw.rect(self.screen, LCARS_COLORS['blue'], 
-                        (schematic_x - nacelle_offset - nacelle_width, schematic_y + 60, nacelle_width, nacelle_height), 2)
-        # Starboard nacelle
-        pygame.draw.rect(self.screen, LCARS_COLORS['bg_medium'], 
-                        (schematic_x + nacelle_offset, schematic_y + 60, nacelle_width, nacelle_height))
-        pygame.draw.rect(self.screen, LCARS_COLORS['blue'], 
-                        (schematic_x + nacelle_offset, schematic_y + 60, nacelle_width, nacelle_height), 2)
-        
-        # Draw weapon placement indicators
+        # Draw weapon placement indicators on the sprite
         # Count weapons per arc
         fore_phasers = sum(1 for w in ship.weapon_arrays if 'fore' in w.firing_arcs)
         aft_phasers = sum(1 for w in ship.weapon_arrays if 'aft' in w.firing_arcs)
@@ -4980,73 +4968,64 @@ class CombatTestScreen:
         fore_torpedoes = sum(1 for t in ship.torpedo_bays if 'fore' in t.firing_arcs)
         aft_torpedoes = sum(1 for t in ship.torpedo_bays if 'aft' in t.firing_arcs)
         
-        # Draw weapon icons (small circles for phasers, triangles for torpedoes)
+        # Draw weapon icons around the sprite
         icon_size = 4
+        sprite_width = ship_sprite.get_width()
+        sprite_height = ship_sprite.get_height()
         
-        # Fore weapons (top of saucer)
+        # Fore weapons (right side of sprite since facing=0 points right)
         if fore_phasers > 0:
-            for i in range(min(fore_phasers, 6)):  # Max 6 icons
-                wx = schematic_x - 24 + (i * 8)
-                wy = schematic_y + 15
+            for i in range(min(fore_phasers, 6)):
+                wx = sprite_rect.right + 5
+                wy = sprite_rect.centery - 20 + (i * 7)
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         if fore_torpedoes > 0:
             for i in range(min(fore_torpedoes, 3)):
-                wx = schematic_x - 12 + (i * 12)
-                wy = schematic_y + 5
-                points = [(wx, wy - 5), (wx - 4, wy + 3), (wx + 4, wy + 3)]
+                wx = sprite_rect.right + 10
+                wy = sprite_rect.centery - 10 + (i * 10)
+                points = [(wx + 5, wy), (wx - 3, wy - 4), (wx - 3, wy + 4)]
                 pygame.draw.polygon(self.screen, LCARS_COLORS['orange'], points)
         
-        # Aft weapons (bottom of engineering)
+        # Aft weapons (left side)
         if aft_phasers > 0:
             for i in range(min(aft_phasers, 4)):
-                wx = schematic_x - 12 + (i * 8)
-                wy = eng_y + eng_height - 10
+                wx = sprite_rect.left - 5
+                wy = sprite_rect.centery - 12 + (i * 8)
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         if aft_torpedoes > 0:
             for i in range(min(aft_torpedoes, 2)):
-                wx = schematic_x - 6 + (i * 12)
-                wy = eng_y + eng_height - 3
-                points = [(wx, wy + 5), (wx - 4, wy - 3), (wx + 4, wy - 3)]
+                wx = sprite_rect.left - 10
+                wy = sprite_rect.centery - 5 + (i * 10)
+                points = [(wx - 5, wy), (wx + 3, wy - 4), (wx + 3, wy + 4)]
                 pygame.draw.polygon(self.screen, LCARS_COLORS['orange'], points)
         
-        # Port weapons (left side)
+        # Port weapons (top side since sprite is rotated)
         if port_phasers > 0:
             for i in range(min(port_phasers, 4)):
-                wx = schematic_x - saucer_width // 2 - 3
-                wy = schematic_y + 30 + (i * 12)
+                wx = sprite_rect.centerx - 15 + (i * 10)
+                wy = sprite_rect.top - 5
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         
-        # Starboard weapons (right side)
+        # Starboard weapons (bottom side)
         if starboard_phasers > 0:
             for i in range(min(starboard_phasers, 4)):
-                wx = schematic_x + saucer_width // 2 + 3
-                wy = schematic_y + 30 + (i * 12)
+                wx = sprite_rect.centerx - 15 + (i * 10)
+                wy = sprite_rect.bottom + 5
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), icon_size)
         
-        # Draw shield indicators on schematic
+        y = sprite_rect.bottom + 20
+        
+        # Hull status
         hull_pct = int((ship.hull / ship.max_hull) * 100)
         hull_color = LCARS_COLORS['green'] if hull_pct > 75 else get_warning_color() if hull_pct > 50 else LCARS_COLORS['alert_red']
-        
-        # Fore shield arc indicator
-        fore_shield_pct = int((ship.shields['fore'] / ship.max_shields['fore']) * 100) if ship.max_shields['fore'] > 0 else 0
-        fore_color = LCARS_COLORS['light_blue'] if fore_shield_pct > 50 else get_warning_color() if fore_shield_pct > 25 else LCARS_COLORS['alert_red']
-        pygame.draw.arc(self.screen, fore_color, saucer_rect.inflate(10, 10), 1.9, 4.4, 3)
-        
-        # Aft shield arc indicator
-        aft_shield_pct = int((ship.shields['aft'] / ship.max_shields['aft']) * 100) if ship.max_shields['aft'] > 0 else 0
-        aft_color = LCARS_COLORS['light_blue'] if aft_shield_pct > 50 else get_warning_color() if aft_shield_pct > 25 else LCARS_COLORS['alert_red']
-        aft_rect = pygame.Rect(eng_x - 5, eng_y, eng_width + 10, eng_height)
-        pygame.draw.arc(self.screen, aft_color, aft_rect, 5.0, 7.3, 3)
-        
-        y = schematic_y + 200
-        
-        # Hull status below schematic
         hull_text = f"HULL: {hull_pct}%"
         hull_surface = self.font_tiny.render(hull_text, True, hull_color)
         self.screen.blit(hull_surface, (x, y))
         y += 18
         
         # Compact shield status
+        fore_shield_pct = int((ship.shields['fore'] / ship.max_shields['fore']) * 100) if ship.max_shields['fore'] > 0 else 0
+        aft_shield_pct = int((ship.shields['aft'] / ship.max_shields['aft']) * 100) if ship.max_shields['aft'] > 0 else 0
         shield_text = f"SHIELDS: F{fore_shield_pct}% A{aft_shield_pct}%"
         shield_surface = self.font_tiny.render(shield_text, True, LCARS_COLORS['light_blue'])
         self.screen.blit(shield_surface, (x, y))

@@ -5,169 +5,21 @@ Bridge crew assigned:
 ============================================================
 COMBAT ARENA INITIALIZED
 ============================================================
-Combat: Yorktown vs 1 enemy ships
-  Enemy forces: 1× Odyssey
+Combat: Excelsior II vs 1 enemy ships
+  Enemy forces: 1× Excelsior2
 Starting positions:
-  Enterprise: hex=(-5,0) facing=0 size=Huge
-  Odyssey-1: hex=(5,-2) facing=3 size=Huge
+  Enterprise: hex=(-5,0) facing=0 size=Large
+  Excelsior2-1: hex=(5,-2) facing=3 size=Large
 Combat ready - press SPACE to fire, ENTER to advance
 
 ============================================================
 INITIATIVE PHASE - Rolling for turn order
 ============================================================
-Enterprise: Base 75 + Roll 26 = 101
-Odyssey-1: Base 0 + Roll 45 = 45
-Turn order: Enterprise > Odyssey-1
+Enterprise: Base 75 + Roll 50 = 125
+Excelsior2-1: Base 0 + Roll 46 = 46
+Turn order: Enterprise > Excelsior2-1
 
 ============================================================
 PHASE CHANGE: INITIATIVE → MOVEMENT
 ============================================================
-Enterprise: 5 movement points
-DEBUG: Enterprise wants to move FWD from (-5,0) to (-4,0)
->>> All hexes clear, proceeding with movement
-Moved forward (4 pts left)
-DEBUG: Enterprise wants to move FWD from (-4,0) to (-3,0)
->>> All hexes clear, proceeding with movement
-Moved forward (3 pts left)
-Turned right (2 pts left)
-DEBUG: Enterprise wants to move FWD from (-3,0) to (-3,1)
->>> All hexes clear, proceeding with movement
-Moved forward (1 pts left)
-Turned left (0 pts left)
-No movement points left!
-KEY: ENTER pressed - phase=movement
-DEBUG: Enterprise completed action in movement phase
-DEBUG: Next ship is Odyssey-1
-Odyssey-1: 5 movement points
-DEBUG: Odyssey-1 starting at (5,-2) facing 3
-DEBUG: All ship positions:
-  Enterprise: (-3,1)
-  Odyssey-1: (5,-2)
-DEBUG: Asking AI to decide movement with 5 MP
-DEBUG: AI settings - preferred_range:6, aggressive:True, evasion:0.5
-DEBUG: Distance to target: 8, Target in arc: fore
-DEBUG: AI decided on 5 moves: ['forward', 'forward', 'forward', 'turn_left', 'forward']
-DEBUG: Odyssey-1 executing move 1/5: forward
-DEBUG:   Before: (5,-2) facing 3
-DEBUG: Odyssey-1 wants to move FWD from (5,-2) to (4,-2)
->>> All hexes clear, proceeding with movement
-Moved forward (4 pts left)
-DEBUG:   After: (4,-2) facing 3 - Success: True
-DEBUG: Odyssey-1 executing move 2/5: forward
-DEBUG:   Before: (4,-2) facing 3
-DEBUG: Odyssey-1 wants to move FWD from (4,-2) to (3,-2)
->>> All hexes clear, proceeding with movement
-Moved forward (3 pts left)
-DEBUG:   After: (3,-2) facing 3 - Success: True
-DEBUG: Odyssey-1 executing move 3/5: forward
-DEBUG:   Before: (3,-2) facing 3
-DEBUG: Odyssey-1 wants to move FWD from (3,-2) to (2,-2)
->>> All hexes clear, proceeding with movement
-Moved forward (2 pts left)
-DEBUG:   After: (2,-2) facing 3 - Success: True
-DEBUG: Odyssey-1 executing move 4/5: turn_left
-DEBUG:   Before: (2,-2) facing 3
-Turned left (1 pts left)
-DEBUG:   After: (2,-2) facing 2 - Success: True
-DEBUG: Odyssey-1 executing move 5/5: forward
-DEBUG:   Before: (2,-2) facing 2
-DEBUG: Odyssey-1 wants to move FWD from (2,-2) to (1,-1)
->>> All hexes clear, proceeding with movement
-Moved forward (0 pts left)
-DEBUG:   After: (1,-1) facing 2 - Success: True
-DEBUG: Odyssey-1 ended at (1,-1) facing 2
-DEBUG: Odyssey-1 completed action in movement phase
-DEBUG: All ships completed movement, advancing phase
-============================================================
-PHASE CHANGE: MOVEMENT → TARGETING
-============================================================
-DEBUG select_target(): Enterprise -> Odyssey-1 as primary
->>> TARGET SET: Enterprise PRIMARY = Odyssey-1
-Single target auto-assigned (ENTER to continue)
-MOUSE: Left-click at (2542, 786)
-DEBUG: Enterprise completed action in targeting phase
-DEBUG: Next ship is Odyssey-1
-DEBUG: Executing AI targeting for Odyssey-1
-DEBUG select_target(): Odyssey-1 -> Enterprise as primary
->>> TARGET SET: Odyssey-1 PRIMARY = Enterprise
-DEBUG: Odyssey-1 completed action in targeting phase
-DEBUG: All ships completed targeting, advancing phase
-============================================================
-PHASE CHANGE: TARGETING → FIRING
-============================================================
-============================================================
-FIRING WEAPONS
-============================================================
-Enterprise firing:
-  PRIMARY: Odyssey-1
-  SECONDARY: None
-  TERTIARY: None
-PHASER → PRIMARY: 106 to fore shields
-PHASER → PRIMARY: 106 to fore shields
-PHASER → PRIMARY: 106 to fore shields
-PHASER → PRIMARY: 106 to fore shields
-PHASER → PRIMARY: 106 to fore shields
-PHASER → PRIMARY: 106 to fore shields
-PHASER → PRIMARY: 106 to fore shields
-PHASER → PRIMARY: 106 to fore shields
-TORPEDO → PRIMARY: 270 shield, 0 hull
-TORPEDO → PRIMARY: 270 shield, 0 hull
-TORPEDO → PRIMARY: 270 shield, 0 hull
-TORPEDO → PRIMARY: 270 shield, 0 hull
-DEBUG: Enterprise completed action in firing phase
-DEBUG: Next ship is Odyssey-1
-DEBUG: Executing AI firing for Odyssey-1
-============================================================
-Odyssey-1: AI FIRING TURN
-============================================================
-Target: Enterprise
---- PRIMARY Enterprise: 4 hexes, hitting FORE shields ---
-PHASER: 74 to fore shields
-PHASER: 74 to fore shields
-PHASER: 74 to fore shields
-PHASER: 74 to fore shields
-PHASER: 74 to fore shields
-PHASER: 74 to fore shields
-TORPEDO: 200 to fore shields, 3.3450000000000006 hull
-TORPEDO: 200 to fore shields, 3.3450000000000006 hull
-TORPEDO: 200 to fore shields, 3.3450000000000006 hull
-DEBUG: Odyssey-1 completed action in firing phase
-DEBUG: All ships completed firing, advancing phase
-============================================================
-PHASE CHANGE: DAMAGE → POWER
-============================================================
-Enterprise: Allocate power (Available: 600)
-Drag point in triangle to allocate | ENTER: Confirm | ESC: Cancel
-Enterprise: Power allocated (E:49 S:52 W:497) → 1.50x arrays
-DEBUG: Enterprise completed action in power phase
-DEBUG: Next ship is Odyssey-1
-DEBUG: Executing AI power allocation for Odyssey-1
-Odyssey-1: Power allocated (E:180 S:150 W:270)
-DEBUG: Odyssey-1 completed action in power phase
-DEBUG: All ships completed power, advancing phase
-============================================================
-PHASE CHANGE: POWER → REPAIR
-============================================================
-Enterprise: Repairs available: 2
-Click damaged system to repair | ENTER: Done
-Repairs complete (0/2 used)
-DEBUG: Enterprise completed action in repair phase
-DEBUG: Next ship is Odyssey-1
-DEBUG: Executing AI repairs for Odyssey-1
-Odyssey-1: No repairs needed
-DEBUG: Odyssey-1 completed action in repair phase
-DEBUG: All ships completed repair, advancing phase
-============================================================
-PHASE CHANGE: REPAIR → HOUSEKEEPING
-============================================================
-============================================================
-INITIATIVE PHASE - Rolling for turn order
-============================================================
-Enterprise: Base 75 + Roll 46 = 121
-Odyssey-1: Base 0 + Roll 98 = 98
-Turn order: Enterprise > Odyssey-1
-
-============================================================
-PHASE CHANGE: INITIATIVE → MOVEMENT
-============================================================
-Enterprise: 5 movement points
+Enterprise: 7 movement points

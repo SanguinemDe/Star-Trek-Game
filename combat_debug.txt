@@ -1,10 +1,10 @@
-Enemy ships config: [('Odyssey', 1)]
-Processing Odyssey, requesting 1 ships
-Found function_name: create_odyssey_class
+Enemy ships config: [('Excelsior2', 1)]
+Processing Excelsior2, requesting 1 ships
+Found function_name: create_excelsior_ii_class
 Creating ship 1/1
-Created Odyssey-1 at hex (5, -2), pixel (1478.1281292110202, 431.0)
+Created Excelsior2-1 at hex (5, -2), pixel (1478.1281292110202, 431.0)
 
 Total enemy ships created: 1
-Enemy ship names: ['Odyssey-1']
+Enemy ship names: ['Excelsior2-1']
 Total ships in all_ships: 2
-All ship names: ['Enterprise', 'Odyssey-1']
+All ship names: ['Enterprise', 'Excelsior2-1']
