@@ -460,30 +460,32 @@ class AdvancedShip:
     
     def get_engine_power_bonus(self):
         """
-        Calculate movement bonus based on engine power allocation (graduated bonus)
+        Calculate movement bonus/penalty based on engine power allocation
         
-        GRADUATED BONUS SYSTEM:
-        - 100 power = 0 bonus (balanced allocation baseline)
+        GRADUATED BONUS/PENALTY SYSTEM:
+        - 0 power = -50% speed penalty (minimum)
+        - 100 power = 0 bonus/penalty (balanced allocation baseline)
         - 200 power = max bonus (full allocation)
-        - Scales linearly between 100 and 200
+        - Scales linearly on both sides of 100
         
         Max bonuses by ship size:
-        - Small/Medium/Large ships: 0 → +1 → +2 → +3 (graduated)
-        - Very Large/Huge ships: 0 → +1 → +2 (graduated)
+        - Small/Medium/Large ships: -50% to +3 MP
+        - Very Large/Huge ships: -50% to +2 MP
         
         Example: Odyssey (Huge) with 5 base MP
-        - 100 power = 5 MP (+0 bonus)
+        - 0 power = 2.5 MP (-50% penalty)
+        - 50 power = 3.75 MP (-25% penalty)
+        - 100 power = 5 MP (0 bonus/penalty)
         - 150 power = 6 MP (+1 bonus, 50% of max)
         - 200 power = 7 MP (+2 bonus, 100% of max)
         
         Example: Miranda (Medium) with 6 base MP
-        - 100 power = 6 MP (+0 bonus)
-        - 133 power = 7 MP (+1 bonus, 33% of max)
-        - 167 power = 8 MP (+2 bonus, 67% of max)
-        - 200 power = 9 MP (+3 bonus, 100% of max)
+        - 0 power = 3 MP (-50% penalty)
+        - 100 power = 6 MP (0 bonus/penalty)
+        - 200 power = 9 MP (+3 bonus)
         
         Returns:
-            float: Bonus movement points to add (0 to max_bonus)
+            float: Bonus/penalty movement points to add (can be negative)
         """
         engine_power = self.power_distribution['engines']
         
@@ -495,99 +497,114 @@ class AdvancedShip:
         else:
             max_bonus = 0.0
         
-        # Graduated scaling from 100 (0 bonus) to 200 (max bonus)
-        if engine_power <= 100:
-            return 0.0
-        
-        power_above_balanced = engine_power - 100
-        percentage = power_above_balanced / 100.0  # 0.0 to 1.0
-        
-        return max_bonus * percentage
+        if engine_power >= 100:
+            # Above balanced: graduated bonus from 0 to max
+            power_above_balanced = engine_power - 100
+            percentage = power_above_balanced / 100.0  # 0.0 to 1.0
+            return max_bonus * percentage
+        else:
+            # Below balanced: penalty from 0 to -50% of base speed
+            # At 0 power: -50% speed penalty
+            # At 50 power: -25% speed penalty
+            # At 100 power: 0% penalty
+            penalty_percentage = (100 - engine_power) / 100.0  # 0.0 to 1.0
+            speed_penalty = self.impulse_speed * 0.5 * penalty_percentage  # Up to -50% of base
+            return -speed_penalty
     
     def get_shield_power_bonus(self):
         """
-        Calculate shield bonus based on shield power allocation (sliding scale)
+        Calculate shield bonus/penalty based on shield power allocation
         
-        SLIDING SCALE SYSTEM:
-        - 0 power = 1.0x shields (no allocation)
+        GRADUATED BONUS/PENALTY SYSTEM:
+        - 0 power = 0.5x shields (50% capacity/regen, -50% penalty)
         - 100 power = 1.0x shields (balanced allocation)
-        - 200 power = 1.5x shields (full allocation, +50% max)
+        - 200 power = 1.5x shields (full allocation, +50% bonus)
+        - Scales linearly on both sides of 100
         
         This affects both shield capacity and regeneration rate.
         When power is reduced, current shields scale down proportionally.
         
         Example: Ship with 1000 base max shields
-        - 0 power = 1000 shields (1.0x, 0% bonus)
-        - 100 power = 1000 shields (1.0x, 0% bonus, balanced)
-        - 150 power = 1250 shields (1.25x, 50% of max bonus)
-        - 200 power = 1500 shields (1.5x, 100% of max bonus)
+        - 0 power = 500 shields (0.5x, -50% penalty)
+        - 50 power = 750 shields (0.75x, -25% penalty)
+        - 100 power = 1000 shields (1.0x, balanced)
+        - 150 power = 1250 shields (1.25x, +25% bonus)
+        - 200 power = 1500 shields (1.5x, +50% bonus)
         
         Returns:
-            float: Multiplier for shields (1.0 to 1.5)
+            float: Multiplier for shields (0.5 to 1.5)
         """
         shield_power = self.power_distribution['shields']
         
-        # Calculate percentage above balanced (100 power)
-        # 100 power = 0% → 1.0x (no bonus)
-        # 150 power = 50% → 1.25x (half bonus)
-        # 200 power = 100% → 1.5x (full bonus)
-        if shield_power <= 100:
-            return 1.0
-        
-        power_above_balanced = shield_power - 100
-        percentage = power_above_balanced / 100.0  # 0.0 to 1.0
-        
-        # Max bonus is +50% (1.0 baseline + 0.5 max bonus)
-        return 1.0 + (0.5 * percentage)
+        if shield_power >= 100:
+            # Above balanced: graduated bonus from 1.0x to 1.5x
+            power_above_balanced = shield_power - 100
+            percentage = power_above_balanced / 100.0  # 0.0 to 1.0
+            # Max bonus is +50% (1.0 baseline + 0.5 max bonus)
+            return 1.0 + (0.5 * percentage)
+        else:
+            # Below balanced: penalty from 1.0x down to 0.5x
+            # At 0 power: 0.5x multiplier (-50% penalty)
+            # At 50 power: 0.75x multiplier (-25% penalty)
+            # At 100 power: 1.0x multiplier (no penalty)
+            penalty_percentage = (100 - shield_power) / 100.0  # 0.0 to 1.0
+            # Scale from 1.0 down to 0.5 (max penalty of -50%)
+            return 1.0 - (0.5 * penalty_percentage)
     
     def get_weapon_power_bonus(self):
         """
-        Calculate weapon damage bonus based on weapon power allocation (sliding scale)
+        Calculate weapon damage bonus/penalty based on weapon power allocation
         
-        SLIDING SCALE SYSTEM (ARRAYS ONLY, not torpedoes):
-        - 0 power = 1.0x damage (no allocation)
+        GRADUATED BONUS/PENALTY SYSTEM (ARRAYS ONLY, not torpedoes):
+        - 0 power = 0.5x damage (50% damage, -50% penalty)
         - 100 power = 1.0x damage (balanced allocation)
-        - 200 power = 1.5x damage (full allocation, +50% max)
+        - 200 power = 1.5x damage (full allocation, +50% bonus)
+        - Scales linearly on both sides of 100
         
-        This prevents one-shotting while making arrays more effective.
+        This prevents one-shotting while making power management tactical.
         Torpedoes remain high-risk/high-reward (unaffected by power).
         
         Example: Yorktown phaser doing 35 base damage
-        - 0 power = 35 damage (1.0x, 0% bonus)
-        - 100 power = 35 damage (1.0x, 0% bonus, balanced)
-        - 150 power = 43.75 damage (1.25x, 50% of max bonus)
-        - 200 power = 52.5 damage (1.5x, 100% of max bonus)
+        - 0 power = 17.5 damage (0.5x, -50% penalty)
+        - 50 power = 26.25 damage (0.75x, -25% penalty)
+        - 100 power = 35 damage (1.0x, balanced)
+        - 150 power = 43.75 damage (1.25x, +25% bonus)
+        - 200 power = 52.5 damage (1.5x, +50% bonus)
         - Photon torpedo: ALWAYS full damage (not affected)
         
         Returns:
-            float: Multiplier for array damage (1.0 to 1.5)
+            float: Multiplier for array damage (0.5 to 1.5)
         """
         weapon_power = self.power_distribution['weapons']
         
-        # Calculate percentage above balanced (100 power)
-        # 100 power = 0% → 1.0x (no bonus)
-        # 150 power = 50% → 1.25x (half bonus)
-        # 200 power = 100% → 1.5x (full bonus)
-        if weapon_power <= 100:
-            return 1.0
-        
-        power_above_balanced = weapon_power - 100
-        percentage = power_above_balanced / 100.0  # 0.0 to 1.0
-        
-        # Max bonus is +50% (1.0 baseline + 0.5 max bonus)
-        return 1.0 + (0.5 * percentage)
+        if weapon_power >= 100:
+            # Above balanced: graduated bonus from 1.0x to 1.5x
+            power_above_balanced = weapon_power - 100
+            percentage = power_above_balanced / 100.0  # 0.0 to 1.0
+            # Max bonus is +50% (1.0 baseline + 0.5 max bonus)
+            return 1.0 + (0.5 * percentage)
+        else:
+            # Below balanced: penalty from 1.0x down to 0.5x
+            # At 0 power: 0.5x multiplier (-50% penalty)
+            # At 50 power: 0.75x multiplier (-25% penalty)
+            # At 100 power: 1.0x multiplier (no penalty)
+            penalty_percentage = (100 - weapon_power) / 100.0  # 0.0 to 1.0
+            # Scale from 1.0 down to 0.5 (max penalty of -50%)
+            return 1.0 - (0.5 * penalty_percentage)
     
     def get_current_movement_points(self):
         """
-        Calculate actual movement points with power bonus applied
+        Calculate actual movement points with power bonus/penalty applied
         
         Returns:
-            int: Movement points for this turn (base + power bonus, rounded up)
+            int: Movement points for this turn (base + power bonus, rounded up, minimum 1)
         """
         import math
         base_mp = self.impulse_speed
-        bonus_mp = self.get_engine_power_bonus()
-        return math.ceil(base_mp + bonus_mp)
+        bonus_mp = self.get_engine_power_bonus()  # Can be negative
+        total_mp = base_mp + bonus_mp
+        # Ensure at least 1 movement point (ships can't be completely immobile)
+        return max(1, math.ceil(total_mp))
     
     def get_max_shields_for_arc(self, arc):
         """
