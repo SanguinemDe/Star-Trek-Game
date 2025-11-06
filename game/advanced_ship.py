@@ -412,11 +412,20 @@ class AdvancedShip:
         """
         Redistribute power between systems (must total to available power)
         Adding power to one system takes it away from the other 2
+        Each system is capped at 200 power maximum.
         
         When shield power is reduced, current shields scale down proportionally
         to prevent exploiting the system (charging shields then moving power away).
         """
         available = self.get_available_power()
+        total = engines + shields + weapons
+        
+        # Cap each system at 200 power maximum
+        engines = min(engines, 200)
+        shields = min(shields, 200)
+        weapons = min(weapons, 200)
+        
+        # Recalculate total after capping
         total = engines + shields + weapons
         
         if total <= available:
