@@ -1333,6 +1333,55 @@ class AdvancedShip:
     def is_multi_hex(self):
         """Check if this ship occupies multiple hexes"""
         return self.size in ["Very Large", "Huge"]
+    
+    def would_collide_at(self, new_q, new_r, all_ships):
+        """
+        Check if moving to new position would cause collision with any ship
+        
+        Args:
+            new_q, new_r: Target hex coordinates (center hex for multi-hex ships)
+            all_ships: List of all ships in combat (including self)
+            
+        Returns:
+            (would_collide: bool, blocking_ship: Ship or None, colliding_hexes: list)
+        """
+        # Temporarily calculate what hexes we would occupy at new position
+        old_q, old_r = self.hex_q, self.hex_r
+        self.hex_q = new_q
+        self.hex_r = new_r
+        would_occupy = self.get_occupied_hexes()
+        self.hex_q = old_q
+        self.hex_r = old_r
+        
+        # Check each hex against all other ships
+        for test_hex_q, test_hex_r in would_occupy:
+            for other_ship in all_ships:
+                # Skip self and destroyed ships
+                if other_ship == self or other_ship.hull <= 0:
+                    continue
+                
+                # Get other ship's occupied hexes
+                other_hexes = other_ship.get_occupied_hexes()
+                
+                # Check for overlap
+                if (test_hex_q, test_hex_r) in other_hexes:
+                    return (True, other_ship, [(test_hex_q, test_hex_r)])
+        
+        return (False, None, [])
+    
+    def can_move_to(self, new_q, new_r, all_ships):
+        """
+        Simplified collision check - returns True if move is legal
+        
+        Args:
+            new_q, new_r: Target hex coordinates
+            all_ships: List of all ships in combat
+            
+        Returns:
+            bool: True if can move to position without collision
+        """
+        would_collide, _, _ = self.would_collide_at(new_q, new_r, all_ships)
+        return not would_collide
 
 
 class WeaponArray:

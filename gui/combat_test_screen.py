@@ -494,10 +494,14 @@ class CombatConfigScreen:
         self.selected_enemy_ship = self.available_ships[0] if self.available_ships else None
         self.enemy_count = 1
         
+        # Crew selection state
+        self.captain_skill = 75  # Command skill (affects initiative)
+        self.tactical_officer_skill = 75  # Tactical skill (affects accuracy)
+        
         # UI state
         self.player_ship_scroll = 0
         self.enemy_ship_scroll = 0
-        self.max_scroll_items = 8  # How many ships visible at once
+        self.max_scroll_items = 6  # Reduced to make room for crew UI
         
         # Buttons
         self.start_button = pygame.Rect(
@@ -514,9 +518,11 @@ class CombatConfigScreen:
         
         # Scroll buttons
         self.player_scroll_up = pygame.Rect(self.screen_width // 4 + 150, 200, 30, 30)
-        self.player_scroll_down = pygame.Rect(self.screen_width // 4 + 150, 600, 30, 30)
+        self.player_scroll_down = pygame.Rect(self.screen_width // 4 + 150, 500, 30, 30)
         self.enemy_scroll_up = pygame.Rect(self.screen_width * 3 // 4 + 150, 200, 30, 30)
-        self.enemy_scroll_down = pygame.Rect(self.screen_width * 3 // 4 + 150, 600, 30, 30)
+        self.enemy_scroll_down = pygame.Rect(self.screen_width * 3 // 4 + 150, 500, 30, 30)
+        
+        # Crew skill adjustment buttons (will be positioned dynamically)
         
     def _get_combat_ready_ships(self):
         """
@@ -715,13 +721,37 @@ class CombatConfigScreen:
         if plus_btn.collidepoint(pos):
             self.enemy_count = min(10, self.enemy_count + 1)
         
+        # Crew skill adjustment buttons (left side)
+        crew_x = self.screen_width // 4
+        crew_y_start = 550
+        
+        # Captain skill buttons
+        captain_minus = pygame.Rect(crew_x - 100, crew_y_start, 30, 30)
+        captain_plus = pygame.Rect(crew_x + 70, crew_y_start, 30, 30)
+        if captain_minus.collidepoint(pos):
+            self.captain_skill = max(0, self.captain_skill - 5)
+        if captain_plus.collidepoint(pos):
+            self.captain_skill = min(100, self.captain_skill + 5)
+        
+        # Tactical officer skill buttons
+        tactical_minus = pygame.Rect(crew_x - 100, crew_y_start + 50, 30, 30)
+        tactical_plus = pygame.Rect(crew_x + 70, crew_y_start + 50, 30, 30)
+        if tactical_minus.collidepoint(pos):
+            self.tactical_officer_skill = max(0, self.tactical_officer_skill - 5)
+        if tactical_plus.collidepoint(pos):
+            self.tactical_officer_skill = min(100, self.tactical_officer_skill + 5)
+        
         return None
     
     def _build_config(self):
         """Build and return combat configuration"""
         return {
             'player_ship': self.selected_player_ship,
-            'enemy_ships': self.enemy_ships.copy()
+            'enemy_ships': self.enemy_ships.copy(),
+            'crew_skills': {
+                'captain_command': self.captain_skill,
+                'tactical_officer': self.tactical_officer_skill
+            }
         }
     
     def _draw(self):
@@ -791,6 +821,60 @@ class CombatConfigScreen:
             self.screen.blit(name, name_rect)
             
             list_y += 50
+        
+        # Draw crew configuration below ship list
+        self._draw_crew_configuration()
+    
+    def _draw_crew_configuration(self):
+        """Draw crew skill configuration UI"""
+        x = self.screen_width // 4
+        y = 550
+        
+        # Section title
+        crew_title = self.font_small.render("BRIDGE CREW", True, LCARS_COLORS['purple'])
+        title_rect = crew_title.get_rect(center=(x, y - 20))
+        self.screen.blit(crew_title, title_rect)
+        
+        # Captain (Command) skill
+        self._draw_skill_row(x, y, "Captain (Command)", self.captain_skill, 
+                             "Initiative bonus in combat")
+        
+        # Tactical Officer skill
+        self._draw_skill_row(x, y + 50, "Tactical Officer", self.tactical_officer_skill,
+                            "Weapon accuracy bonus")
+    
+    def _draw_skill_row(self, x, y, label, value, description):
+        """Draw a single skill adjustment row"""
+        # Label
+        label_text = self.font_tiny.render(label + ":", True, LCARS_COLORS['light_blue'])
+        self.screen.blit(label_text, (x - 150, y))
+        
+        # Minus button
+        minus_btn = pygame.Rect(x - 100, y, 30, 30)
+        pygame.draw.rect(self.screen, LCARS_COLORS['orange'], minus_btn)
+        pygame.draw.rect(self.screen, LCARS_COLORS['blue'], minus_btn, 2)
+        minus_text = self.font_small.render("-", True, LCARS_COLORS['text_white'])
+        self.screen.blit(minus_text, minus_text.get_rect(center=minus_btn.center))
+        
+        # Value display with background
+        value_rect = pygame.Rect(x - 65, y, 130, 30)
+        pygame.draw.rect(self.screen, LCARS_COLORS['bg_medium'], value_rect)
+        pygame.draw.rect(self.screen, LCARS_COLORS['blue'], value_rect, 2)
+        
+        value_text = self.font_small.render(f"{value}/100", True, LCARS_COLORS['text_white'])
+        value_text_rect = value_text.get_rect(center=value_rect.center)
+        self.screen.blit(value_text, value_text_rect)
+        
+        # Plus button
+        plus_btn = pygame.Rect(x + 70, y, 30, 30)
+        pygame.draw.rect(self.screen, LCARS_COLORS['orange'], plus_btn)
+        pygame.draw.rect(self.screen, LCARS_COLORS['blue'], plus_btn, 2)
+        plus_text = self.font_small.render("+", True, LCARS_COLORS['text_white'])
+        self.screen.blit(plus_text, plus_text.get_rect(center=plus_btn.center))
+        
+        # Description/effect
+        desc_text = self.font_tiny.render(description, True, LCARS_COLORS['text_gray'])
+        self.screen.blit(desc_text, (x - 150, y + 32))
     
     def _draw_enemy_configuration(self):
         """Draw enemy ship configuration panel"""
@@ -922,8 +1006,13 @@ class CombatTestScreen:
         
         # Combat state (initialize before creating ships)
         self.combat_log = []
+        self.combat_log_scroll = 0  # For scrolling through log
         self.turn_number = 1
         self.player_turn = True
+        
+        # Clear/initialize log file
+        with open("combat_log.txt", "w", encoding='utf-8') as f:
+            f.write("=== COMBAT LOG INITIALIZED ===\n")
         
         # Combat phase system
         self.combat_phase = "initiative"  # initiative, movement, targeting, firing, damage, power, repair, housekeeping
@@ -952,11 +1041,29 @@ class CombatTestScreen:
         self.movement_points_used = 0
         self.has_moved_this_turn = False  # Track if ship has moved forward/backward
         self.turns_this_activation = 0  # Track turns made this activation
+        self.ship_hexes_moved = {}  # Track hexes moved per ship this turn (for evasion)
         
         # Targeting system
         self.ship_targets = {}  # Dict: ship -> {'primary': ship, 'secondary': ship, 'tertiary': ship}
         self.target_selection_mode = None  # 'primary', 'secondary', or 'tertiary'
         self.all_ships = []  # List of all ships in combat (for targeting)
+        
+        # Radial menu for targeting
+        self.radial_menu_active = False
+        self.radial_menu_position = None
+        self.radial_menu_target = None  # The ship being targeted by the menu
+        self.radial_menu_options = []  # List of menu options with positions
+        
+        # Power management system
+        self.power_allocation_mode = None  # 'active' when showing triangle, None otherwise
+        self.temp_power_allocation = {}  # Temporary power settings during allocation
+        self._dragging_power_control = False  # Track if user is dragging the power control point
+        
+        # Repair system
+        self.repair_mode = None  # 'active' when showing repair UI
+        self.repairs_available = 0  # Number of repairs player can perform
+        self.repairs_used = 0  # Number of repairs already used
+        self.selected_repair_system = None  # Currently selected system to repair
         
         # Animation system
         self.animating_ship = None  # Which ship is currently animating
@@ -983,6 +1090,10 @@ class CombatTestScreen:
         }
         self.show_combat_summary = False
         self.pending_combat_summary = False  # Waiting for weapon effects to finish before showing summary
+        
+        # Initiative system
+        self.show_initiative_popup = False
+        self.initiative_rolls = []
         
         # Weapon assignment system
         self.show_weapon_assignment = False
@@ -1084,6 +1195,10 @@ class CombatTestScreen:
         )
         self.player_ship.faction = "friendly"  # Assign faction
         
+        # Apply crew skills from configuration
+        if 'crew_skills' in self.config:
+            self._apply_crew_to_ship(self.player_ship, self.config['crew_skills'])
+        
         # Create enemy ships
         enemy_ships_list = []
         registry_counter = 1000
@@ -1167,9 +1282,16 @@ class CombatTestScreen:
         # Log combat start
         enemy_desc = ", ".join([f"{count}× {ship_class}" for ship_class, count in self.config['enemy_ships']])
         total_enemies = sum(count for ship_class, count in self.config['enemy_ships'])
+        self.add_to_log("=" * 60)
+        self.add_to_log("COMBAT ARENA INITIALIZED")
+        self.add_to_log("=" * 60)
         self.add_to_log(f"Combat: {self.player_ship.ship_class} vs {total_enemies} enemy ships")
         self.add_to_log(f"  Enemy forces: {enemy_desc}")
+        self.add_to_log(f"Starting positions:")
+        for ship in self.all_ships:
+            self.add_to_log(f"  {ship.name}: hex=({ship.hex_q},{ship.hex_r}) facing={ship.facing} size={ship.size}")
         self.add_to_log("Combat ready - press SPACE to fire, ENTER to advance")
+        self.add_to_log("")
         
         # Initialize targeting for all ships
         self.ship_targets = {}
@@ -1178,6 +1300,43 @@ class CombatTestScreen:
         
         # Start combat with initiative roll
         self.start_new_turn()
+    
+    def _apply_crew_to_ship(self, ship, crew_skills):
+        """Apply crew skills to ship by creating crew members"""
+        from game.character import Character
+        
+        # Create Captain with command skill
+        captain_skill = crew_skills.get('captain_command', 75)
+        captain = Character(
+            name="Captain",
+            species="Human",
+            background="Command School"
+        )
+        # Override attributes with configured skills
+        captain.attributes['command'] = captain_skill
+        
+        # Create Tactical Officer with tactical skill
+        tactical_skill = crew_skills.get('tactical_officer', 75)
+        tactical_officer = Character(
+            name="Tactical Officer",
+            species="Human",
+            background="Security/Tactical"
+        )
+        # Override attributes with configured skills
+        tactical_officer.attributes['tactical'] = tactical_skill
+        
+        # Assign to ship
+        if not hasattr(ship, 'command_crew'):
+            ship.command_crew = {}
+        if not hasattr(ship, 'tactical_crew'):
+            ship.tactical_crew = {}
+        
+        ship.command_crew['captain'] = captain
+        ship.tactical_crew['tactical_officer'] = tactical_officer
+        
+        self.add_to_log(f"Bridge crew assigned:")
+        self.add_to_log(f"  Captain: {captain_skill} Command (Initiative: +{captain_skill} to roll)")
+        self.add_to_log(f"  Tactical: {tactical_skill} Tactical (Accuracy: +{int((tactical_skill/100)*20)}%)")
         
     def _load_ship_sprite(self, ship):
         """Load the ship sprite image with pre-rendered rotations for maximum quality"""
@@ -1455,10 +1614,15 @@ class CombatTestScreen:
         ]
         
     def add_to_log(self, message):
-        """Add message to combat log"""
+        """Add message to combat log and write to file"""
         self.combat_log.append(message)
-        # Keep only last 2 messages to prevent overlap
-        if len(self.combat_log) > 2:
+        
+        # Write to log file immediately for debugging
+        with open("combat_log.txt", "a", encoding='utf-8') as f:
+            f.write(f"{message}\n")
+        
+        # Keep last 100 messages for scrolling
+        if len(self.combat_log) > 100:
             self.combat_log.pop(0)
     
     # ═══════════════════════════════════════════════════════════════════
@@ -1472,6 +1636,30 @@ class CombatTestScreen:
         self.current_ship_index = 0
         self.actions_completed = {k: False for k in self.actions_completed}
         
+        # Reset hex movement tracking for new turn
+        self.ship_hexes_moved = {}
+        
+        # Reset movement state
+        self.movement_points_remaining = 0
+        self.movement_points_used = 0
+        self.has_moved_this_turn = False
+        self.turns_this_activation = 0
+        
+        # Clear any pending AI moves from previous turn
+        self.pending_ai_moves.clear()
+        
+        # Close any open UI elements
+        self.close_radial_menu()
+        self.show_weapon_assignment = False
+        self.power_allocation_mode = None
+        self.repair_mode = None
+        
+        # Clear any active timers from previous turn
+        pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Auto-advance timer
+        pygame.time.set_timer(pygame.USEREVENT + 2, 0)  # AI movement timer
+        pygame.time.set_timer(pygame.USEREVENT + 3, 0)  # AI firing timer
+        pygame.time.set_timer(pygame.USEREVENT + 4, 0)  # AI targeting timer
+        
         logger.info(f"=== Turn {self.turn_number} Started ===")
         
         # Update AI targets (check for dead targets, friendly fire, etc.)
@@ -1480,37 +1668,49 @@ class CombatTestScreen:
             if ai.target:
                 logger.info(f"AI {ai.ship.name} targeting {ai.target.name}")
         
-        # Roll initiative
+        # Roll initiative (this shows the popup)
         self.roll_initiative()
         
-        # Auto-advance to movement phase
-        self.advance_phase()
+        # Don't auto-advance yet - wait for initiative popup to be dismissed
+        # The popup dismissal will call advance_phase()
     
     def roll_initiative(self):
         """Determine turn order based on command skill"""
-        # TEMPORARILY DISABLED - Player always goes first for testing
-        # import random
-        # 
-        # initiative_rolls = []
-        # 
-        # for ship in self.all_ships:
-        #     # Base initiative from command crew skill (if present)
-        #     base_initiative = 0
-        #     if ship.command_crew.get('captain'):
-        #         base_initiative = ship.command_crew['captain'].attributes.get('command', 50)
-        #     
-        #     # Add random d100 roll
-        #     roll = random.randint(1, 100)
-        #     total = base_initiative + roll
-        #     
-        #     initiative_rolls.append((ship, total, roll))
-        # 
-        # # Sort by total (highest first)
-        # initiative_rolls.sort(key=lambda x: x[1], reverse=True)
-        # self.initiative_order = [ship for ship, total, roll in initiative_rolls]
+        import random
         
-        # TESTING: Player always wins initiative, but include ALL ships
-        self.initiative_order = [self.player_ship] + [ship for ship in self.all_ships if ship != self.player_ship]
+        self.add_to_log("=" * 60)
+        self.add_to_log("INITIATIVE PHASE - Rolling for turn order")
+        self.add_to_log("=" * 60)
+        
+        initiative_rolls = []
+        
+        for ship in self.all_ships:
+            # Base initiative from command crew skill (if present)
+            base_initiative = 0
+            if hasattr(ship, 'command_crew') and ship.command_crew.get('captain'):
+                captain = ship.command_crew['captain']
+                if hasattr(captain, 'attributes'):
+                    base_initiative = captain.attributes.get('command', 50)
+            
+            # Add random d100 roll
+            roll = random.randint(1, 100)
+            total = base_initiative + roll
+            
+            self.add_to_log(f"{ship.name}: Base {base_initiative} + Roll {roll} = {total}")
+            initiative_rolls.append((ship, total, roll, base_initiative))
+        
+        # Sort by total (highest first)
+        initiative_rolls.sort(key=lambda x: x[1], reverse=True)
+        self.initiative_order = [ship for ship, total, roll, base in initiative_rolls]
+        
+        self.add_to_log(f"Turn order: {' > '.join([s.name for s in self.initiative_order])}")
+        self.add_to_log("")
+        
+        # Store rolls for display
+        self.initiative_rolls = initiative_rolls
+        
+        # Show initiative popup
+        self.show_initiative_popup = True
     
     def advance_phase(self):
         """Move to next combat phase"""
@@ -1537,6 +1737,9 @@ class CombatTestScreen:
             self.combat_phase = self.phase_order[current_index + 1]
             self.current_ship_index = 0
             
+            self.add_to_log("=" * 60)
+            self.add_to_log(f"PHASE CHANGE: {self.phase_order[current_index].upper()} → {self.combat_phase.upper()}")
+            self.add_to_log("=" * 60)
             logger.info(f"Combat phase advanced to: {self.combat_phase.upper()}")
             
             # Initialize movement phase for first ship
@@ -1549,8 +1752,8 @@ class CombatTestScreen:
                 if first_ship == self.player_ship:
                     self.start_player_targeting()
                 else:
-                    # AI targeting will be triggered by complete_ship_action
-                    pygame.time.set_timer(pygame.USEREVENT + 4, 300)
+                    # Execute AI targeting immediately for first ship
+                    self.execute_ai_targeting()
             
             # Initialize firing phase - show weapon assignment if player has multiple targets
             if self.combat_phase == "firing" and len(self.initiative_order) > 0:
@@ -1563,6 +1766,27 @@ class CombatTestScreen:
                         # Show weapon assignment window
                         self.show_weapon_assignment = True
                         self._initialize_weapon_assignments()
+                else:
+                    # Execute AI firing immediately for first ship
+                    self.execute_ai_firing()
+            
+            # Initialize power phase for first ship
+            if self.combat_phase == "power" and len(self.initiative_order) > 0:
+                first_ship = self.initiative_order[0]
+                if first_ship == self.player_ship:
+                    self.start_power_allocation()
+                else:
+                    # AI power allocation will be triggered by complete_ship_action
+                    self.execute_ai_power_management()
+            
+            # Initialize repair phase for first ship
+            if self.combat_phase == "repair" and len(self.initiative_order) > 0:
+                first_ship = self.initiative_order[0]
+                if first_ship == self.player_ship:
+                    self.start_repair_phase()
+                else:
+                    # AI repairs will be triggered by complete_ship_action
+                    self.execute_ai_repairs()
             
             # Auto-resolve certain phases
             if self.combat_phase == "damage":
@@ -1608,28 +1832,58 @@ class CombatTestScreen:
     
     def complete_ship_action(self):
         """Mark current ship's action as complete, move to next ship"""
+        current_ship = self.get_current_acting_ship()
+        
+        # Debug logging
+        if current_ship:
+            self.add_to_log(f"DEBUG: {current_ship.name} completed action in {self.combat_phase} phase")
+        
+        # Clear target selection mode and radial menu when player completes targeting phase
+        if current_ship == self.player_ship and self.combat_phase == "targeting":
+            self.target_selection_mode = None
+            self.close_radial_menu()
+        
         self.current_ship_index += 1
         
         if self.current_ship_index >= len(self.initiative_order):
             # All ships acted, advance phase
+            self.add_to_log(f"DEBUG: All ships completed {self.combat_phase}, advancing phase")
             self.advance_phase()
         else:
+            next_ship = self.get_current_acting_ship()
+            self.add_to_log(f"DEBUG: Next ship is {next_ship.name if next_ship else 'None'}")
+            
             # Initialize movement for next ship if in movement phase
             if self.combat_phase == "movement":
-                next_ship = self.get_current_acting_ship()
                 self.start_movement_phase(next_ship)
             # Execute AI targeting if it's AI ship's turn in targeting phase
             elif self.combat_phase == "targeting":
-                next_ship = self.get_current_acting_ship()
                 if next_ship and next_ship != self.player_ship:
-                    # AI auto-selects targets
-                    pygame.time.set_timer(pygame.USEREVENT + 4, 300)
+                    # AI auto-selects targets - call directly instead of using timer
+                    self.add_to_log(f"DEBUG: Executing AI targeting for {next_ship.name}")
+                    self.execute_ai_targeting()
             # Execute AI firing if it's AI ship's turn in firing phase
             elif self.combat_phase == "firing":
-                next_ship = self.get_current_acting_ship()
                 if next_ship and next_ship != self.player_ship:
-                    # Delay AI firing slightly for visual clarity
-                    pygame.time.set_timer(pygame.USEREVENT + 3, 500)
+                    # Execute AI firing directly instead of using timer
+                    self.add_to_log(f"DEBUG: Executing AI firing for {next_ship.name}")
+                    self.execute_ai_firing()
+            # Execute AI power management if it's AI ship's turn in power phase
+            elif self.combat_phase == "power":
+                if next_ship and next_ship != self.player_ship:
+                    self.add_to_log(f"DEBUG: Executing AI power allocation for {next_ship.name}")
+                    self.execute_ai_power_management()
+                else:
+                    # Player ship - start power allocation UI
+                    self.start_power_allocation()
+            # Execute AI repairs if it's AI ship's turn in repair phase
+            elif self.combat_phase == "repair":
+                if next_ship and next_ship != self.player_ship:
+                    self.add_to_log(f"DEBUG: Executing AI repairs for {next_ship.name}")
+                    self.execute_ai_repairs()
+                else:
+                    # Player ship - start repair UI
+                    self.start_repair_phase()
         # Don't log ship turns - shown in top right UI
     
     # ═══════════════════════════════════════════════════════════════════
@@ -1654,6 +1908,118 @@ class CombatTestScreen:
         return (self.combat_phase == "movement" and 
                 self.get_current_acting_ship() == ship and
                 self.movement_points_remaining > 0)
+    
+    def is_hex_occupied(self, q, r, exclude_ship=None):
+        """
+        Check if a hex coordinate is occupied by any ship (including multi-hex ships)
+        
+        Args:
+            q: Hex Q coordinate
+            r: Hex R coordinate
+            exclude_ship: Ship to exclude from check (usually the moving ship)
+            
+        Returns:
+            Ship object if hex is occupied, None otherwise
+        """
+        # DEBUG: Log every check
+        checker_name = exclude_ship.name if exclude_ship else "Unknown"
+        self.add_to_log(f"COLLISION CHECK: Is hex ({q},{r}) occupied? (checking for {checker_name})")
+        
+        for ship in self.all_ships:
+            if ship == exclude_ship:
+                self.add_to_log(f"  Skipping {ship.name} (is the moving ship)")
+                continue
+            
+            # Skip destroyed ships
+            if hasattr(ship, 'hull') and ship.hull <= 0:
+                self.add_to_log(f"  Skipping {ship.name} (DESTROYED - hull={ship.hull})")
+                continue
+            
+            # Check if this ship occupies the target hex
+            # For multi-hex ships, check ALL hexes they occupy
+            if hasattr(ship, 'get_occupied_hexes'):
+                occupied_hexes = ship.get_occupied_hexes()
+                self.add_to_log(f"  Checking {ship.name} ({ship.size}): center ({ship.hex_q},{ship.hex_r}), occupies hexes: {occupied_hexes}")
+                
+                if (q, r) in occupied_hexes:
+                    # COLLISION DETECTED
+                    self.add_to_log(f"    -> *** COLLISION! {ship.name} occupies hex ({q},{r})! ***")
+                    return ship
+                else:
+                    self.add_to_log(f"    -> Not blocking target hex ({q},{r})")
+            elif hasattr(ship, 'hex_q') and hasattr(ship, 'hex_r'):
+                # Fallback for ships without get_occupied_hexes method
+                self.add_to_log(f"  Checking {ship.name}: at ({ship.hex_q},{ship.hex_r}) (no size info)")
+                if ship.hex_q == q and ship.hex_r == r:
+                    self.add_to_log(f"    -> COLLISION! {ship.name} is at ({q},{r})!")
+                    return ship
+            else:
+                self.add_to_log(f"  {ship.name} -> Missing hex coords!")
+        
+        self.add_to_log(f"  Result: Hex ({q},{r}) is CLEAR - movement allowed")
+        return None
+    
+    def would_collide_multi_hex(self, moving_ship, new_center_q, new_center_r):
+        """
+        DEPRECATED: Use ship.would_collide_at() instead.
+        This method is kept for backward compatibility but collision detection
+        has been moved into the AdvancedShip class itself.
+        
+        Check if moving a multi-hex ship to a new center position would cause ANY collision
+        
+        For multi-hex ships (Very Large/Huge), checks if ANY of the hexes they would occupy
+        at the new position would collide with ANY hexes occupied by other ships.
+        
+        Args:
+            moving_ship: The ship attempting to move
+            new_center_q: New Q coordinate for ship's center
+            new_center_r: New R coordinate for ship's center
+            
+        Returns:
+            (would_collide: bool, blocking_ship: Ship or None, colliding_hexes: list of tuples)
+        """
+        # If ship doesn't have multi-hex support, fall back to simple check
+        if not hasattr(moving_ship, 'get_occupied_hexes'):
+            blocking = self.is_hex_occupied(new_center_q, new_center_r, exclude_ship=moving_ship)
+            return (blocking is not None, blocking, [(new_center_q, new_center_r)] if blocking else [])
+        
+        # Calculate what hexes the moving ship would occupy at new position
+        # Temporarily update position to calculate
+        old_q, old_r = moving_ship.hex_q, moving_ship.hex_r
+        moving_ship.hex_q = new_center_q
+        moving_ship.hex_r = new_center_r
+        would_occupy = moving_ship.get_occupied_hexes()
+        moving_ship.hex_q = old_q
+        moving_ship.hex_r = old_r
+        
+        self.add_to_log(f"MULTI-HEX COLLISION CHECK: {moving_ship.name} moving to ({new_center_q},{new_center_r})")
+        self.add_to_log(f"  {moving_ship.name} would occupy: {would_occupy}")
+        
+        # Check each hex the moving ship would occupy
+        for test_hex_q, test_hex_r in would_occupy:
+            # Check if this hex collides with any other ship
+            for other_ship in self.all_ships:
+                if other_ship == moving_ship:
+                    continue
+                    
+                # Skip destroyed ships
+                if hasattr(other_ship, 'hull') and other_ship.hull <= 0:
+                    continue
+                
+                # Get hexes occupied by other ship
+                if hasattr(other_ship, 'get_occupied_hexes'):
+                    other_hexes = other_ship.get_occupied_hexes()
+                else:
+                    other_hexes = [(other_ship.hex_q, other_ship.hex_r)]
+                
+                # Check for overlap
+                if (test_hex_q, test_hex_r) in other_hexes:
+                    self.add_to_log(f"  *** COLLISION! {moving_ship.name}'s hex ({test_hex_q},{test_hex_r}) would overlap with {other_ship.name}!")
+                    self.add_to_log(f"    {other_ship.name} occupies: {other_hexes}")
+                    return (True, other_ship, [(test_hex_q, test_hex_r)])
+        
+        self.add_to_log(f"  No collision - all hexes clear")
+        return (False, None, [])
     
     def move_forward(self, ship):
         """Move ship forward one hex (costs 1 movement point)"""
@@ -1685,6 +2051,19 @@ class CombatTestScreen:
         new_q = ship.hex_q + dq
         new_r = ship.hex_r + dr
         
+        # Check if destination hex is occupied (multi-hex aware)
+        self.add_to_log(f"DEBUG: {ship.name} wants to move FWD from ({ship.hex_q},{ship.hex_r}) to ({new_q},{new_r})")
+        
+        # Use ship's built-in collision detection
+        would_collide, blocking_ship, colliding_hexes = ship.would_collide_at(new_q, new_r, self.all_ships)
+        if would_collide:
+            self.add_to_log(f">>> {ship.name} MOVEMENT BLOCKED! Would collide with {blocking_ship.name}")
+            self.add_to_log(f">>> Colliding hexes: {colliding_hexes}")
+            self.add_to_log(f">>> RETURNING FALSE - MOVE CANCELLED")
+            return False
+        else:
+            self.add_to_log(f">>> All hexes clear, proceeding with movement")
+        
         # Calculate new pixel position
         old_pos = ship.position
         new_pos = self.hex_grid.axial_to_pixel(new_q, new_r)
@@ -1700,6 +2079,12 @@ class CombatTestScreen:
         self.movement_points_used += 1
         self.has_moved_this_turn = True  # Mark that ship has moved
         self.turns_this_activation = 0  # Reset turn counter after moving
+        
+        # Track hexes moved for evasion calculation
+        if ship not in self.ship_hexes_moved:
+            self.ship_hexes_moved[ship] = 0
+        self.ship_hexes_moved[ship] += 1
+        
         self.add_to_log(f"Moved forward ({self.movement_points_remaining} pts left)")
         return True
     
@@ -1714,8 +2099,10 @@ class CombatTestScreen:
             self.add_to_log("Not your turn to move!")
             return False
         
-        if self.movement_points_remaining < 1:
-            self.add_to_log("No movement points left!")
+        # Moving backward costs 2 movement points
+        backward_cost = 2
+        if self.movement_points_remaining < backward_cost:
+            self.add_to_log(f"Not enough movement points! (Backward costs {backward_cost})")
             return False
         
         # Move opposite of facing direction
@@ -1732,6 +2119,17 @@ class CombatTestScreen:
         new_q = ship.hex_q - dq  # Opposite direction
         new_r = ship.hex_r - dr
         
+        # Check if destination hex is occupied (multi-hex aware)
+        self.add_to_log(f"DEBUG: {ship.name} wants to move BACK from ({ship.hex_q},{ship.hex_r}) to ({new_q},{new_r})")
+        would_collide, blocking_ship, colliding_hexes = ship.would_collide_at(new_q, new_r, self.all_ships)
+        if would_collide:
+            self.add_to_log(f">>> {ship.name} MOVEMENT BLOCKED! Would collide with {blocking_ship.name}")
+            self.add_to_log(f">>> Colliding hexes: {colliding_hexes}")
+            self.add_to_log(f">>> RETURNING FALSE - MOVE CANCELLED")
+            return False
+        else:
+            self.add_to_log(f">>> All hexes clear, proceeding with backward movement")
+        
         # Calculate new pixel position
         old_pos = ship.position
         new_pos = self.hex_grid.axial_to_pixel(new_q, new_r)
@@ -1743,10 +2141,17 @@ class CombatTestScreen:
         # Start animation from old to new position
         self.start_ship_animation(ship, old_pos, new_pos)
         
-        self.movement_points_remaining -= 1
-        self.movement_points_used += 1
+        # Moving backward costs 2 movement points
+        self.movement_points_remaining -= backward_cost
+        self.movement_points_used += backward_cost
         self.has_moved_this_turn = True  # Mark that ship has moved
         self.turns_this_activation = 0  # Reset turn counter after moving
+        
+        # Track hexes moved for evasion calculation
+        if ship not in self.ship_hexes_moved:
+            self.ship_hexes_moved[ship] = 0
+        self.ship_hexes_moved[ship] += 1
+        
         self.add_to_log(f"Moved backward ({self.movement_points_remaining} pts left)")
         return True
     
@@ -1851,6 +2256,9 @@ class CombatTestScreen:
             self.complete_ship_action()
             return
         
+        # Log starting position
+        self.add_to_log(f"DEBUG: {ship.name} starting at ({ship.hex_q},{ship.hex_r}) facing {ship.facing}")
+        
         # Find this ship's AI controller
         ship_ai = None
         for ai in self.enemy_ais:
@@ -1866,36 +2274,97 @@ class CombatTestScreen:
         # Ensure AI has updated target
         ship_ai.update_target(self.all_ships)
         
+        # Log all ship positions before movement
+        self.add_to_log(f"DEBUG: All ship positions:")
+        for s in self.all_ships:
+            self.add_to_log(f"  {s.name}: ({s.hex_q},{s.hex_r})")
+        
         # Get AI movement decisions
+        self.add_to_log(f"DEBUG: Asking AI to decide movement with {self.movement_points_remaining} MP")
+        self.add_to_log(f"DEBUG: AI settings - preferred_range:{ship_ai.preferred_range}, aggressive:{ship_ai.aggressive}, evasion:{ship_ai.evasion_priority}")
+        
+        # Calculate and log tactical situation
+        if ship_ai.target:
+            distance = ship_ai.hex_grid.distance(ship.hex_q, ship.hex_r, ship_ai.target.hex_q, ship_ai.target.hex_r)
+            target_arc = ship.get_target_arc(ship_ai.target.hex_q, ship_ai.target.hex_r)
+            self.add_to_log(f"DEBUG: Distance to target: {distance}, Target in arc: {target_arc}")
+        
         moves = ship_ai.decide_movement(self.movement_points_remaining)
+        
+        self.add_to_log(f"DEBUG: AI decided on {len(moves)} moves: {moves}")
         
         # If no moves, complete action immediately
         if len(moves) == 0:
-            pygame.time.set_timer(pygame.USEREVENT + 2, 500)
+            self.add_to_log(f"{ship.name}: No movement planned")
+            self.complete_ship_action()
             return
         
-        # Queue up moves to execute with animation
-        self.pending_ai_moves.clear()
-        
-        for move_command in moves:
+        # Execute all moves immediately (no animation queuing for AI)
+        for i, move_command in enumerate(moves):
+            self.add_to_log(f"DEBUG: {ship.name} executing move {i+1}/{len(moves)}: {move_command}")
+            self.add_to_log(f"DEBUG:   Before: ({ship.hex_q},{ship.hex_r}) facing {ship.facing}")
+            
+            success = False
             if move_command == 'forward':
-                self.pending_ai_moves.append(lambda s=ship: self.move_forward(s))
+                success = self.move_forward(ship)
             elif move_command == 'backward':
-                self.pending_ai_moves.append(lambda s=ship: self.move_backward(s))
+                success = self.move_backward(ship)
             elif move_command == 'turn_left':
-                self.pending_ai_moves.append(lambda s=ship: self.turn_left(s))
+                success = self.turn_left(ship)
             elif move_command == 'turn_right':
-                self.pending_ai_moves.append(lambda s=ship: self.turn_right(s))
+                success = self.turn_right(ship)
+            
+            self.add_to_log(f"DEBUG:   After: ({ship.hex_q},{ship.hex_r}) facing {ship.facing} - Success: {success}")
+            
+            # If move failed (blocked), stop executing remaining moves
+            if not success and move_command in ['forward', 'backward']:
+                self.add_to_log(f"{ship.name}: Movement blocked, stopping remaining moves")
+                break
         
-        # Add completion callback as final action
-        self.pending_ai_moves.append(lambda: pygame.time.set_timer(pygame.USEREVENT + 2, 500))
+        # Log final position
+        self.add_to_log(f"DEBUG: {ship.name} ended at ({ship.hex_q},{ship.hex_r}) facing {ship.facing}")
+        
+        # CRITICAL FIX: Update ship's visual position to match final hex coordinates
+        # AI moves execute instantly without animations, so position must be manually synced
+        ship.position = self.hex_grid.axial_to_pixel(ship.hex_q, ship.hex_r)
+        self.add_to_log(f"DEBUG: {ship.name} position synced to pixel {ship.position}")
+        
+        # VERIFICATION: Check if this ship is now overlapping with any other ship
+        for other_ship in self.all_ships:
+            if other_ship == ship or (hasattr(other_ship, 'hull') and other_ship.hull <= 0):
+                continue
+            
+            # Check if centers match
+            if other_ship.hex_q == ship.hex_q and other_ship.hex_r == ship.hex_r:
+                self.add_to_log(f"!!! ERROR: {ship.name} and {other_ship.name} are BOTH at ({ship.hex_q},{ship.hex_r})!")
+            
+            # Check multi-hex overlap
+            if hasattr(ship, 'get_occupied_hexes') and hasattr(other_ship, 'get_occupied_hexes'):
+                ship_hexes = set(ship.get_occupied_hexes())
+                other_hexes = set(other_ship.get_occupied_hexes())
+                overlap = ship_hexes & other_hexes
+                if overlap:
+                    self.add_to_log(f"!!! ERROR: {ship.name} and {other_ship.name} overlap at hexes: {overlap}!")
+        
+        # Complete action immediately after all moves
+        self.complete_ship_action()
     
     def execute_ai_firing(self):
         """Execute AI-controlled ship firing"""
         ship = self.get_current_acting_ship()
-        if not ship or ship == self.player_ship:
+        if not ship:
+            self.add_to_log("ERROR: No ship for AI firing!")
             self.complete_ship_action()
             return
+            
+        if ship == self.player_ship:
+            self.add_to_log("ERROR: AI firing called for player ship!")
+            self.complete_ship_action()
+            return
+        
+        self.add_to_log("=" * 60)
+        self.add_to_log(f"{ship.name}: AI FIRING TURN")
+        self.add_to_log("=" * 60)
         
         # Find this ship's AI controller
         ship_ai = None
@@ -1904,14 +2373,21 @@ class CombatTestScreen:
                 ship_ai = ai
                 break
         
+        if not ship_ai:
+            self.add_to_log(f"{ship.name}: ERROR - No AI controller found! Skipping.")
+            self.complete_ship_action()
+            return
+        
         # Update target before firing (ensure valid enemy target)
-        if ship_ai:
-            ship_ai.update_target(self.all_ships)
-            target = ship_ai.target
-        else:
+        ship_ai.update_target(self.all_ships)
+        target = ship_ai.target
+        
+        if not target:
             # Fallback: get from targeting phase
             targets = self.ship_targets.get(ship, {})
             target = targets.get('primary')
+        
+        self.add_to_log(f"Target: {target.name if target else 'None'}")
         
         # Fire at target with full accuracy
         if target and target.hull > 0:
@@ -1923,6 +2399,11 @@ class CombatTestScreen:
                 self._fire_at_target(ship, target, 1.0, "PRIMARY")
             else:
                 self.add_to_log(f"{ship.name}: Refusing to fire at friendly {target.name}")
+        else:
+            if not target:
+                self.add_to_log(f"{ship.name}: No valid target")
+            else:
+                self.add_to_log(f"{ship.name}: Target {target.name} already destroyed")
         
         # Mark action complete
         self.complete_ship_action()
@@ -1940,16 +2421,169 @@ class CombatTestScreen:
             target: Ship being targeted
             priority: 'primary', 'secondary', or 'tertiary'
         """
+        self.add_to_log(f"DEBUG select_target(): {attacker.name} -> {target.name if target else 'None'} as {priority}")
+        
         if attacker not in self.ship_targets:
             self.ship_targets[attacker] = {'primary': None, 'secondary': None, 'tertiary': None}
+            self.add_to_log(f"  Created targeting dict")
+        
+        # Check if this target is already assigned to a different priority (only if target is not None)
+        if target is not None:
+            current_targets = self.ship_targets[attacker]
+            for existing_priority, existing_target in current_targets.items():
+                if existing_target == target and existing_priority != priority:
+                    self.add_to_log(f"  WARNING: {target.name} already targeted as {existing_priority.upper()}!")
+                    return
         
         self.ship_targets[attacker][priority] = target
         
         priority_text = priority.upper()
         if target:
-            self.add_to_log(f"{attacker.name}: {priority_text} target = {target.name}")
+            self.add_to_log(f">>> TARGET SET: {attacker.name} {priority_text} = {target.name}")
         else:
-            self.add_to_log(f"{attacker.name}: {priority_text} target cleared")
+            self.add_to_log(f">>> TARGET CLEARED: {attacker.name} {priority_text}")
+    
+    def clear_all_targets(self, attacker):
+        """Clear all target selections for a ship"""
+        if attacker in self.ship_targets:
+            self.ship_targets[attacker] = {'primary': None, 'secondary': None, 'tertiary': None}
+            self.add_to_log(f"{attacker.name}: All targets cleared")
+    
+    def open_radial_menu(self, target_ship, position):
+        """Open radial menu for targeting a specific ship"""
+        self.radial_menu_active = True
+        self.radial_menu_target = target_ship
+        self.radial_menu_position = position
+        
+        # Define menu options with colors
+        import math
+        menu_radius = 80
+        num_options = 4  # Primary, Secondary, Tertiary, Clear
+        
+        self.radial_menu_options = []
+        
+        # Option data: (label, priority, color)
+        options_data = [
+            ("PRIMARY", "primary", LCARS_COLORS['orange']),
+            ("SECONDARY", "secondary", LCARS_COLORS['light_blue']),
+            ("TERTIARY", "tertiary", LCARS_COLORS['purple']),
+            ("CLEAR", "clear", LCARS_COLORS['red'])
+        ]
+        
+        # Calculate positions in a circle
+        for i, (label, priority, color) in enumerate(options_data):
+            angle = (i * 2 * math.pi / num_options) - (math.pi / 2)  # Start at top
+            x = position[0] + menu_radius * math.cos(angle)
+            y = position[1] + menu_radius * math.sin(angle)
+            
+            self.radial_menu_options.append({
+                'label': label,
+                'priority': priority,
+                'color': color,
+                'position': (x, y),
+                'angle': angle
+            })
+    
+    def close_radial_menu(self):
+        """Close the radial menu"""
+        self.radial_menu_active = False
+        self.radial_menu_target = None
+        self.radial_menu_position = None
+        self.radial_menu_options = []
+    
+    def handle_radial_menu_click(self, mouse_pos):
+        """Handle click on radial menu option"""
+        if not self.radial_menu_active:
+            return False
+        
+        self.add_to_log(f"RADIAL MENU: Click at {mouse_pos}, target={self.radial_menu_target.name if self.radial_menu_target else 'None'}")
+        
+        # Check if clicked on any option
+        for option in self.radial_menu_options:
+            opt_x, opt_y = option['position']
+            dx = mouse_pos[0] - opt_x
+            dy = mouse_pos[1] - opt_y
+            dist = (dx*dx + dy*dy) ** 0.5
+            
+            if dist < 40:  # Click radius
+                self.add_to_log(f"  Selected: {option['label']} ({option['priority']})")
+                # Handle the selection
+                if option['priority'] == 'clear':
+                    # Clear this specific target from all priorities
+                    current_targets = self.ship_targets.get(self.player_ship, {})
+                    for priority in ['primary', 'secondary', 'tertiary']:
+                        if current_targets.get(priority) == self.radial_menu_target:
+                            self.select_target(self.player_ship, None, priority)
+                else:
+                    # Set the target with the selected priority
+                    self.select_target(self.player_ship, self.radial_menu_target, option['priority'])
+                
+                self.close_radial_menu()
+                return True
+        
+        # Check if clicked outside menu (close it)
+        center_x, center_y = self.radial_menu_position
+        dx = mouse_pos[0] - center_x
+        dy = mouse_pos[1] - center_y
+        dist = (dx*dx + dy*dy) ** 0.5
+        
+        if dist > 120:  # Outside menu area
+            self.add_to_log(f"  Clicked outside menu, closing")
+            self.close_radial_menu()
+            return True
+        
+        return False
+    
+    def _draw_radial_menu(self, screen):
+        """Draw the radial targeting menu"""
+        if not self.radial_menu_active or not self.radial_menu_position:
+            return
+        
+        import math
+        center_x, center_y = self.radial_menu_position
+        
+        # Draw semi-transparent background circle
+        background_surf = pygame.Surface((240, 240), pygame.SRCALPHA)
+        pygame.draw.circle(background_surf, (0, 0, 0, 180), (120, 120), 120)
+        screen.blit(background_surf, (center_x - 120, center_y - 120))
+        
+        # Draw center circle with target name
+        pygame.draw.circle(screen, LCARS_COLORS['bg_dark'], (center_x, center_y), 35, 0)
+        pygame.draw.circle(screen, LCARS_COLORS['blue'], (center_x, center_y), 35, 2)
+        
+        if self.radial_menu_target:
+            target_font = pygame.font.Font(None, 20)
+            target_text = target_font.render(self.radial_menu_target.name[:8], True, LCARS_COLORS['text_white'])
+            text_rect = target_text.get_rect(center=(center_x, center_y))
+            screen.blit(target_text, text_rect)
+        
+        # Draw each menu option
+        for option in self.radial_menu_options:
+            opt_x, opt_y = option['position']
+            color = option['color']
+            label = option['label']
+            
+            # Draw option circle
+            pygame.draw.circle(screen, color, (int(opt_x), int(opt_y)), 35, 0)
+            pygame.draw.circle(screen, LCARS_COLORS['text_white'], (int(opt_x), int(opt_y)), 35, 2)
+            
+            # Draw connecting line from center
+            pygame.draw.line(screen, color, (center_x, center_y), (opt_x, opt_y), 2)
+            
+            # Draw label
+            label_font = pygame.font.Font(None, 22)
+            label_text = label_font.render(label, True, LCARS_COLORS['black'])
+            label_rect = label_text.get_rect(center=(int(opt_x), int(opt_y)))
+            screen.blit(label_text, label_rect)
+            
+            # Draw smaller label below
+            sub_font = pygame.font.Font(None, 16)
+            if option['priority'] != 'clear':
+                sub_text = sub_font.render("TARGET", True, LCARS_COLORS['black'])
+            else:
+                sub_text = sub_font.render("TARGET", True, LCARS_COLORS['black'])
+            sub_rect = sub_text.get_rect(center=(int(opt_x), int(opt_y) + 12))
+            screen.blit(sub_text, sub_rect)
     
     def get_available_targets(self, attacker):
         """Get list of valid targets for a ship (all ships except self)"""
@@ -2009,37 +2643,529 @@ class CombatTestScreen:
         self.complete_ship_action()
     
     def start_player_targeting(self):
-        """Start player targeting selection"""
-        self.target_selection_mode = 'primary'
-        self.add_to_log("Select PRIMARY target (1-3 to cycle priority, CLICK ship, ENTER to skip)")
+        """Start player targeting selection with radial menu"""
+        # Count available enemies
+        available_targets = self.get_available_targets(self.player_ship)
+        num_targets = len(available_targets)
+        
+        if num_targets == 0:
+            self.add_to_log("No valid targets!")
+            self.complete_ship_action()
+            return
+        elif num_targets == 1:
+            # Only one target - auto-assign as primary
+            self.select_target(self.player_ship, available_targets[0], 'primary')
+            self.add_to_log("Single target auto-assigned (ENTER to continue)")
+        else:
+            # Multiple targets - use radial menu for selection
+            self.add_to_log(f"{num_targets} targets available - CLICK or RIGHT-CLICK on ships to assign priorities")
+            self.add_to_log("Use radial menu: ORANGE=Primary, BLUE=Secondary, PURPLE=Tertiary, RED=Clear")
     
     def cycle_target_priority(self):
-        """Cycle through target priority levels"""
+        """Cycle through target priority levels based on available targets"""
+        available_targets = self.get_available_targets(self.player_ship)
+        num_targets = len(available_targets)
+        
+        if num_targets <= 1:
+            # Can't cycle if only one target
+            return
+        
         if self.target_selection_mode == 'primary':
             self.target_selection_mode = 'secondary'
             self.add_to_log("Select SECONDARY target (-25% accuracy)")
         elif self.target_selection_mode == 'secondary':
-            self.target_selection_mode = 'tertiary'
-            self.add_to_log("Select TERTIARY target (-50% accuracy)")
+            if num_targets >= 3:
+                # Can select tertiary if 3+ targets available
+                self.target_selection_mode = 'tertiary'
+                self.add_to_log("Select TERTIARY target (-50% accuracy)")
+            else:
+                # Only 2 targets, cycle back to primary
+                self.target_selection_mode = 'primary'
+                self.add_to_log("Select PRIMARY target (normal accuracy)")
         else:
             self.target_selection_mode = 'primary'
             self.add_to_log("Select PRIMARY target (normal accuracy)")
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # POWER MANAGEMENT SYSTEM
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def start_power_allocation(self):
+        """Start player power allocation"""
+        ship = self.player_ship
+        available_power = ship.get_available_power()
+        
+        # Initialize temp allocation with current values
+        current_total = ship.power_distribution['engines'] + ship.power_distribution['shields'] + ship.power_distribution['weapons']
+        if current_total == 0:
+            current_total = 1  # Avoid division by zero
+        
+        # Calculate initial triangle position based on current power distribution
+        # Convert power ratios to barycentric coordinates
+        self.temp_power_allocation = {
+            'engines': ship.power_distribution['engines'],
+            'shields': ship.power_distribution['shields'],
+            'weapons': ship.power_distribution['weapons'],
+            'available': available_power,
+            # Triangle control point (will be calculated in rendering)
+            'control_x': 0,
+            'control_y': 0
+        }
+        
+        self.power_allocation_mode = 'active'  # Show the triangle UI
+        self.add_to_log(f"{ship.name}: Allocate power (Available: {available_power})")
+        self.add_to_log("Drag point in triangle to allocate | ENTER: Confirm | ESC: Cancel")
+    
+    def adjust_power_allocation(self, system, amount):
+        """Adjust power allocation for a system"""
+        if not self.temp_power_allocation:
+            return
+        
+        new_value = max(0, self.temp_power_allocation[system] + amount)
+        old_value = self.temp_power_allocation[system]
+        
+        # Check if we have enough available power
+        current_total = sum(self.temp_power_allocation[s] for s in ['engines', 'shields', 'weapons'])
+        available = self.temp_power_allocation['available']
+        
+        if new_value > old_value:
+            # Increasing power - check if we have enough
+            increase = new_value - old_value
+            if current_total + increase > available:
+                self.add_to_log(f"Not enough power! ({current_total}/{available} used)")
+                return
+        
+        self.temp_power_allocation[system] = new_value
+        self.power_allocation_mode = system  # Highlight the system being adjusted
+        
+        # Show updated allocation
+        e = self.temp_power_allocation['engines']
+        s = self.temp_power_allocation['shields']
+        w = self.temp_power_allocation['weapons']
+        total = e + s + w
+        self.add_to_log(f"Power: Engines:{e} Shields:{s} Weapons:{w} ({total}/{available})")
+    
+    def confirm_power_allocation(self):
+        """Apply the power allocation to the ship"""
+        ship = self.player_ship
+        
+        if not self.temp_power_allocation:
+            return
+        
+        # Apply the allocation
+        ship.redistribute_power(
+            self.temp_power_allocation['engines'],
+            self.temp_power_allocation['shields'],
+            self.temp_power_allocation['weapons']
+        )
+        
+        self.add_to_log(f"{ship.name}: Power allocated")
+        self.power_allocation_mode = None
+        self.temp_power_allocation = {}
+        
+        # Complete action
+        self.complete_ship_action()
+    
+    def _is_point_in_triangle(self, point, triangle):
+        """Check if a point is inside a triangle using barycentric coordinates"""
+        px, py = point
+        (x1, y1), (x2, y2), (x3, y3) = triangle
+        
+        # Calculate barycentric coordinates
+        denom = ((y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3))
+        if abs(denom) < 0.001:
+            return False
+        
+        a = ((y2 - y3) * (px - x3) + (x3 - x2) * (py - y3)) / denom
+        b = ((y3 - y1) * (px - x3) + (x1 - x3) * (py - y3)) / denom
+        c = 1 - a - b
+        
+        # Point is inside if all coordinates are positive
+        return a >= 0 and b >= 0 and c >= 0
+    
+    def _update_power_from_mouse(self, mouse_pos):
+        """Update power allocation based on mouse position in triangle"""
+        if not hasattr(self, '_power_triangle_bounds'):
+            return
+        
+        triangle = self._power_triangle_bounds
+        (x1, y1), (x2, y2), (x3, y3) = triangle  # Weapons (top), Shields (bottom-right), Engines (bottom-left)
+        px, py = mouse_pos
+        
+        # Clamp point to triangle bounds
+        if not self._is_point_in_triangle(mouse_pos, triangle):
+            # Find closest point on triangle edges
+            px, py = self._clamp_to_triangle(mouse_pos, triangle)
+        
+        # Calculate barycentric coordinates (these are the power ratios)
+        denom = ((y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3))
+        if abs(denom) < 0.001:
+            return
+        
+        a = ((y2 - y3) * (px - x3) + (x3 - x2) * (py - y3)) / denom  # Weapons (top vertex)
+        b = ((y3 - y1) * (px - x3) + (x1 - x3) * (py - y3)) / denom  # Shields (right vertex)
+        c = 1 - a - b  # Engines (left vertex)
+        
+        # Normalize to ensure they're all positive and sum to 1
+        a = max(0, min(1, a))
+        b = max(0, min(1, b))
+        c = max(0, min(1, c))
+        total = a + b + c
+        if total > 0:
+            a /= total
+            b /= total
+            c /= total
+        
+        # Convert ratios to power values
+        available = self.temp_power_allocation['available']
+        self.temp_power_allocation['weapons'] = int(a * available)
+        self.temp_power_allocation['shields'] = int(b * available)
+        self.temp_power_allocation['engines'] = int(c * available)
+        
+        # Store control point position
+        self.temp_power_allocation['control_x'] = px
+        self.temp_power_allocation['control_y'] = py
+    
+    def _clamp_to_triangle(self, point, triangle):
+        """Find closest point on triangle boundary"""
+        (x1, y1), (x2, y2), (x3, y3) = triangle
+        px, py = point
+        
+        # Check each edge and find closest point
+        def closest_point_on_segment(p, a, b):
+            ax, ay = a
+            bx, by = b
+            px, py = p
+            
+            # Vector from a to b
+            dx = bx - ax
+            dy = by - ay
+            
+            # Project point onto line
+            if dx == 0 and dy == 0:
+                return a
+            
+            t = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+            return (ax + t * dx, ay + t * dy)
+        
+        # Find closest point on each edge
+        p1 = closest_point_on_segment(point, (x1, y1), (x2, y2))
+        p2 = closest_point_on_segment(point, (x2, y2), (x3, y3))
+        p3 = closest_point_on_segment(point, (x3, y3), (x1, y1))
+        
+        # Return closest of the three
+        d1 = (p1[0] - px)**2 + (p1[1] - py)**2
+        d2 = (p2[0] - px)**2 + (p2[1] - py)**2
+        d3 = (p3[0] - px)**2 + (p3[1] - py)**2
+        
+        if d1 <= d2 and d1 <= d3:
+            return p1
+        elif d2 <= d3:
+            return p2
+        else:
+            return p3
+    
+    def execute_ai_power_management(self):
+        """AI automatically allocates power based on strategy and ship condition"""
+        ship = self.get_current_acting_ship()
+        if not ship or ship == self.player_ship:
+            self.complete_ship_action()
+            return
+        
+        available_power = ship.get_available_power()
+        
+        # Find this ship's AI controller for personality
+        ship_ai = None
+        for ai in self.enemy_ais:
+            if ai.ship == ship:
+                ship_ai = ai
+                break
+        
+        # Analyze ship condition
+        hull_percent = (ship.hull / ship.max_hull) * 100 if ship.max_hull > 0 else 0
+        
+        # Calculate total shields (shields are a dict with arcs)
+        total_shields = sum(ship.shields.values()) if isinstance(ship.shields, dict) else ship.shields
+        total_max_shields = sum(ship.max_shields.values()) if isinstance(ship.max_shields, dict) else ship.max_shields
+        shields_percent = (total_shields / total_max_shields) * 100 if total_max_shields > 0 else 0
+        
+        weapon_health = ship.systems.get('weapons', 100)
+        engine_health = ship.systems.get('impulse_engines', 100)
+        
+        # Count targets to gauge threat level
+        available_targets = self.get_available_targets(ship)
+        threat_level = len(available_targets)
+        
+        # Default balanced allocation
+        engines_ratio = 0.33
+        shields_ratio = 0.33
+        weapons_ratio = 0.34
+        
+        # CRITICAL CONDITION: Hull below 30% - prioritize shields and engines for survival
+        if hull_percent < 30:
+            shields_ratio = 0.50
+            engines_ratio = 0.35
+            weapons_ratio = 0.15
+            self.add_to_log(f"{ship.name}: CRITICAL - Defensive power allocation!")
+        
+        # LOW SHIELDS: Shields below 25% - boost shield power
+        elif shields_percent < 25:
+            shields_ratio = 0.50
+            engines_ratio = 0.25
+            weapons_ratio = 0.25
+            self.add_to_log(f"{ship.name}: Low shields - boosting shield power!")
+        
+        # OUTNUMBERED: Multiple targets - balance defense and offense
+        elif threat_level >= 2:
+            shields_ratio = 0.35
+            engines_ratio = 0.30
+            weapons_ratio = 0.35
+        
+        # DAMAGED WEAPONS: Weapons below 50% - reduce weapon power
+        elif weapon_health < 50:
+            weapons_ratio = 0.20
+            shields_ratio = 0.40
+            engines_ratio = 0.40
+        
+        # DAMAGED ENGINES: Engines below 50% - reduce engine power
+        elif engine_health < 50:
+            engines_ratio = 0.20
+            shields_ratio = 0.40
+            weapons_ratio = 0.40
+        
+        # HEALTHY & AGGRESSIVE: Use AI personality
+        elif ship_ai:
+            if ship_ai.aggressive:
+                # Aggressive: More weapons, less shields
+                weapons_ratio = 0.45
+                shields_ratio = 0.25
+                engines_ratio = 0.30
+            elif hasattr(ship_ai, 'evasion_priority') and ship_ai.evasion_priority > 0.6:
+                # Defensive/Evasive: More engines and shields
+                engines_ratio = 0.40
+                shields_ratio = 0.35
+                weapons_ratio = 0.25
+        
+        # Calculate power allocation
+        engines_power = int(available_power * engines_ratio)
+        shields_power = int(available_power * shields_ratio)
+        weapons_power = available_power - engines_power - shields_power  # Remainder
+        
+        # Apply allocation
+        ship.redistribute_power(engines_power, shields_power, weapons_power)
+        
+        self.add_to_log(f"{ship.name}: Power allocated (E:{engines_power} S:{shields_power} W:{weapons_power})")
+        
+        # Complete action
+        self.complete_ship_action()
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # REPAIR SYSTEM
+    # ═══════════════════════════════════════════════════════════════════
+    
+    def start_repair_phase(self):
+        """Start player repair phase"""
+        ship = self.player_ship
+        
+        # Get engineer's skill (use tactical officer's engineering attribute as fallback)
+        engineer_skill = 50  # Default
+        if hasattr(ship, 'tactical_crew') and 'tactical_officer' in ship.tactical_crew:
+            engineer = ship.tactical_crew['tactical_officer']
+            if hasattr(engineer, 'attributes') and 'engineering' in engineer.attributes:
+                engineer_skill = engineer.attributes['engineering']
+        
+        # Calculate repairs available: 1 per 25 engineering skill
+        self.repairs_available = max(1, engineer_skill // 25)
+        self.repairs_used = 0
+        self.selected_repair_system = None
+        self.repair_mode = 'active'
+        
+        self.add_to_log(f"{ship.name}: Repairs available: {self.repairs_available}")
+        self.add_to_log("Click damaged system to repair | ENTER: Done")
+    
+    def perform_repair(self, system_name):
+        """Repair a selected system"""
+        if self.repairs_used >= self.repairs_available:
+            self.add_to_log("No repairs remaining!")
+            return
+        
+        ship = self.player_ship
+        current_health = ship.systems[system_name]
+        
+        if current_health >= 100:
+            self.add_to_log(f"{system_name.replace('_', ' ').title()}: Already at full health")
+            return
+        
+        # Get engineer's skill
+        engineer_skill = 50
+        if hasattr(ship, 'tactical_crew') and 'tactical_officer' in ship.tactical_crew:
+            engineer = ship.tactical_crew['tactical_officer']
+            if hasattr(engineer, 'attributes') and 'engineering' in engineer.attributes:
+                engineer_skill = engineer.attributes['engineering']
+        
+        # Calculate repair amount: 10 + (skill / 10)
+        base_repair = 10
+        skill_bonus = engineer_skill / 10
+        repair_amount = base_repair + skill_bonus
+        
+        # Apply repair using ship's existing method (handles field repair limits)
+        old_health = current_health
+        new_health = ship.repair_system(system_name, repair_amount)
+        actual_repair = new_health - old_health
+        
+        self.repairs_used += 1
+        self.add_to_log(f"Repaired {system_name.replace('_', ' ').title()}: {old_health:.0f}% → {new_health:.0f}% (+{actual_repair:.0f})")
+        
+        if self.repairs_used >= self.repairs_available:
+            self.add_to_log(f"All repairs used ({self.repairs_used}/{self.repairs_available})")
+    
+    def finish_repairs(self):
+        """Complete repair phase"""
+        self.repair_mode = None
+        self.selected_repair_system = None
+        self.add_to_log(f"Repairs complete ({self.repairs_used}/{self.repairs_available} used)")
+        self.complete_ship_action()
+    
+    def execute_ai_repairs(self):
+        """AI automatically repairs systems based on priority and tactical situation"""
+        ship = self.get_current_acting_ship()
+        if not ship or ship == self.player_ship:
+            self.complete_ship_action()
+            return
+        
+        # Get engineer's skill (use default for AI, could be enhanced later)
+        engineer_skill = 50  # AI default engineering skill
+        
+        # Calculate repairs available
+        repairs_available = max(1, engineer_skill // 25)
+        
+        # Calculate repair amount
+        repair_amount = 10 + (engineer_skill / 10)
+        
+        # Find damaged systems (below 100%)
+        damaged_systems = [(name, health) for name, health in ship.systems.items() if health < 100]
+        
+        if not damaged_systems:
+            self.add_to_log(f"{ship.name}: No repairs needed")
+            self.complete_ship_action()
+            return
+        
+        # Analyze tactical situation
+        hull_percent = (ship.hull / ship.max_hull) * 100 if ship.max_hull > 0 else 0
+        
+        # Calculate total shields (shields are a dict with arcs)
+        total_shields = sum(ship.shields.values()) if isinstance(ship.shields, dict) else ship.shields
+        total_max_shields = sum(ship.max_shields.values()) if isinstance(ship.max_shields, dict) else ship.max_shields
+        shields_percent = (total_shields / total_max_shields) * 100 if total_max_shields > 0 else 0
+        
+        # Define repair priority based on situation
+        priority_systems = []
+        
+        # CRITICAL HULL: Prioritize hull integrity and life support
+        if hull_percent < 30:
+            priority_systems = ['structural_integrity', 'life_support', 'shields', 'impulse_engines']
+        
+        # LOW SHIELDS: Prioritize shield systems
+        elif shields_percent < 25:
+            priority_systems = ['shields', 'structural_integrity', 'weapons']
+        
+        # COMBAT EFFECTIVENESS: Prioritize weapons and tactical systems
+        else:
+            # Find this ship's AI controller for personality
+            ship_ai = None
+            for ai in self.enemy_ais:
+                if ai.ship == ship:
+                    ship_ai = ai
+                    break
+            
+            if ship_ai and ship_ai.aggressive:
+                # Aggressive AI prioritizes weapons
+                priority_systems = ['weapons', 'shields', 'impulse_engines', 'structural_integrity']
+            else:
+                # Balanced/Defensive AI prioritizes defenses
+                priority_systems = ['shields', 'impulse_engines', 'weapons', 'structural_integrity']
+        
+        # Create weighted repair list
+        repair_targets = []
+        
+        # Add priority systems first (if damaged)
+        for priority_sys in priority_systems:
+            for sys_name, health in damaged_systems:
+                if priority_sys in sys_name and health < 100:
+                    # Extra weight for critical systems (below 50%)
+                    weight = 100 - health
+                    if health < 50:
+                        weight *= 2  # Double priority for critically damaged systems
+                    repair_targets.append((sys_name, health, weight))
+                    break
+        
+        # Add remaining damaged systems
+        for sys_name, health in damaged_systems:
+            if not any(sys_name == target[0] for target in repair_targets):
+                weight = 100 - health
+                repair_targets.append((sys_name, health, weight))
+        
+        # Sort by weight (highest priority first)
+        repair_targets.sort(key=lambda x: x[2], reverse=True)
+        
+        # Perform repairs
+        repairs_made = 0
+        for system_name, health, weight in repair_targets:
+            if repairs_made >= repairs_available:
+                break
+            
+            old_health = health
+            new_health = ship.repair_system(system_name, repair_amount)
+            actual_repair = new_health - old_health
+            
+            if actual_repair > 0:
+                self.add_to_log(f"{ship.name}: Repaired {system_name.replace('_', ' ').title()} +{actual_repair:.0f}%")
+                repairs_made += 1
+        
+        self.complete_ship_action()
     
     # ═══════════════════════════════════════════════════════════════════
     # WEAPON ASSIGNMENT SYSTEM
     # ═══════════════════════════════════════════════════════════════════
     
     def _initialize_weapon_assignments(self):
-        """Initialize weapon assignments with default values (all weapons to primary)"""
+        """Initialize weapon assignments based on what targets are in arc"""
         self.weapon_assignments = {}
         
-        # Assign all weapon arrays to primary by default
-        for i in range(len(self.player_ship.weapon_arrays)):
-            self.weapon_assignments[f'array_{i}'] = 'primary'
+        # Get selected targets
+        targets = self.ship_targets.get(self.player_ship, {})
         
-        # Assign all torpedo bays to primary by default
-        for i in range(len(self.player_ship.torpedo_bays)):
-            self.weapon_assignments[f'torpedo_{i}'] = 'primary'
+        # Calculate target arcs
+        target_arcs = {}
+        for priority in ['primary', 'secondary', 'tertiary']:
+            if targets.get(priority):
+                target = targets[priority]
+                arc = self.player_ship.get_target_arc(target.hex_q, target.hex_r)
+                target_arcs[priority] = arc
+        
+        # Assign weapon arrays to first valid target in arc
+        for i, weapon in enumerate(self.player_ship.weapon_arrays):
+            weapon_key = f'array_{i}'
+            # Find first valid target in arc
+            assigned = None
+            for priority in ['primary', 'secondary', 'tertiary']:
+                if priority in target_arcs and target_arcs[priority] in weapon.firing_arcs:
+                    assigned = priority
+                    break
+            # Default to primary if nothing found
+            self.weapon_assignments[weapon_key] = assigned if assigned else 'primary'
+        
+        # Assign torpedo bays to first valid target in arc
+        for i, torpedo in enumerate(self.player_ship.torpedo_bays):
+            weapon_key = f'torpedo_{i}'
+            # Find first valid target in arc
+            assigned = None
+            for priority in ['primary', 'secondary', 'tertiary']:
+                if priority in target_arcs and target_arcs[priority] in torpedo.firing_arcs:
+                    assigned = priority
+                    break
+            # Default to primary if nothing found
+            self.weapon_assignments[weapon_key] = assigned if assigned else 'primary'
     
     def _cycle_weapon_target(self, weapon_key):
         """Cycle a weapon's target assignment (only includes targets in arc)"""
@@ -2090,6 +3216,10 @@ class CombatTestScreen:
             
     def fire_weapons(self):
         """Fire all ready weapons at selected targets"""
+        self.add_to_log("=" * 60)
+        self.add_to_log("FIRING WEAPONS")
+        self.add_to_log("=" * 60)
+        
         # Check if it's firing phase
         if self.combat_phase != "firing":
             self.add_to_log(f"Not firing phase! (Currently: {self.combat_phase})")
@@ -2115,6 +3245,11 @@ class CombatTestScreen:
         primary = targets.get('primary')
         secondary = targets.get('secondary')
         tertiary = targets.get('tertiary')
+        
+        self.add_to_log(f"{attacker.name} firing:")
+        self.add_to_log(f"  PRIMARY: {primary.name if primary else 'None'}")
+        self.add_to_log(f"  SECONDARY: {secondary.name if secondary else 'None'}")
+        self.add_to_log(f"  TERTIARY: {tertiary.name if tertiary else 'None'}")
         
         # Build target map with accuracy penalties
         target_map = {}
@@ -2451,15 +3586,38 @@ class CombatTestScreen:
                 
                 damage = weapon.fire(crew_bonus)
                 
-                # Apply sensor accuracy modifier
+                # === NEW TO-HIT CALCULATION ===
+                
+                # 1. Base accuracy from range
                 accuracy_mod = attacker.get_targeting_accuracy(distance)
                 if accuracy_mod is None:
                     continue
                 
-                # Apply multi-target accuracy penalty
+                # 2. Tactical officer skill bonus to hit chance
+                # Get tactical officer skill (0-100)
+                tactical_skill = 0
+                if hasattr(attacker, 'tactical_crew') and attacker.tactical_crew.get('tactical_officer'):
+                    tactical_skill = attacker.tactical_crew['tactical_officer'].attributes.get('tactical', 50)
+                
+                # Convert skill to accuracy bonus: 0-100 skill = 0% to +20% accuracy
+                tactical_accuracy_bonus = (tactical_skill / 100) * 0.20
+                accuracy_mod *= (1.0 + tactical_accuracy_bonus)
+                
+                # 3. Target evasion from movement
+                hexes_moved = self.ship_hexes_moved.get(target, 0)
+                # Each hex moved gives 5% evasion (max 50% at 10+ hexes)
+                evasion_penalty = max(0.5, 1.0 - (hexes_moved * 0.05))
+                accuracy_mod *= evasion_penalty
+                
+                # 4. Apply multi-target accuracy penalty
                 accuracy_mod *= accuracy_penalty
                     
                 actual_damage = int(damage * accuracy_mod)
+                
+                # Log the accuracy breakdown for player visibility
+                if attacker == self.player_ship and hexes_moved > 0:
+                    evasion_pct = int((1.0 - evasion_penalty) * 100)
+                    self.add_to_log(f"  {target.name} evasion: {hexes_moved} hexes = -{evasion_pct}% accuracy")
                 
                 # Track hit/miss (miss if actual_damage is very low due to accuracy)
                 is_hit = actual_damage > 0
@@ -2576,12 +3734,27 @@ class CombatTestScreen:
                     )
                     self.active_weapon_effects.append(torpedo_effect)
                 
-                # Apply sensor accuracy
+                # === NEW TO-HIT CALCULATION (same as energy weapons) ===
+                
+                # 1. Base accuracy from range
                 accuracy_mod = attacker.get_targeting_accuracy(distance)
                 if accuracy_mod is None:
                     continue
                 
-                # Apply multi-target accuracy penalty
+                # 2. Tactical officer skill bonus to hit chance
+                tactical_skill = 0
+                if hasattr(attacker, 'tactical_crew') and attacker.tactical_crew.get('tactical_officer'):
+                    tactical_skill = attacker.tactical_crew['tactical_officer'].attributes.get('tactical', 50)
+                
+                tactical_accuracy_bonus = (tactical_skill / 100) * 0.20
+                accuracy_mod *= (1.0 + tactical_accuracy_bonus)
+                
+                # 3. Target evasion from movement
+                hexes_moved = self.ship_hexes_moved.get(target, 0)
+                evasion_penalty = max(0.5, 1.0 - (hexes_moved * 0.05))
+                accuracy_mod *= evasion_penalty
+                
+                # 4. Apply multi-target accuracy penalty
                 accuracy_mod *= accuracy_penalty
                     
                 actual_damage = int(damage * accuracy_mod)
@@ -2728,6 +3901,14 @@ class CombatTestScreen:
         """Handle input events"""
         for event in events:
             if event.type == pygame.KEYDOWN:
+                # Check if initiative popup is showing - handle first
+                if self.show_initiative_popup:
+                    if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                        self.show_initiative_popup = False
+                        # After dismissing initiative, advance to movement phase
+                        self.advance_phase()
+                    continue  # Don't process other keys while popup is showing
+                
                 # Check if weapon assignment is showing - handle first
                 if self.show_weapon_assignment:
                     if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
@@ -2757,20 +3938,48 @@ class CombatTestScreen:
                     self.exit_to_menu()
                 elif event.key == pygame.K_SPACE:
                     if self.combat_phase == "firing":
+                        self.add_to_log("KEY: SPACE pressed - firing weapons")
                         self.fire_weapons()
                 elif event.key == pygame.K_RETURN:
+                    self.add_to_log(f"KEY: ENTER pressed - phase={self.combat_phase}")
+                    # Power allocation confirmation
+                    if self.combat_phase == "power" and self.power_allocation_mode:
+                        self.confirm_power_allocation()
+                    # Repair phase completion
+                    elif self.combat_phase == "repair" and self.repair_mode:
+                        self.finish_repairs()
                     # Only allow ending turn during player's turn
-                    current_ship = self.get_current_acting_ship()
-                    if current_ship == self.player_ship:
+                    elif self.get_current_acting_ship() == self.player_ship:
                         self.end_turn()  # Advances phase or skips action
                 elif event.key == pygame.K_r:
                     self.reset_arena()
+                # Power allocation controls
+                elif event.key == pygame.K_q:
+                    if self.combat_phase == "power" and self.power_allocation_mode:
+                        self.adjust_power_allocation('engines', 10)
+                elif event.key == pygame.K_a:
+                    if self.combat_phase == "power" and self.power_allocation_mode:
+                        self.adjust_power_allocation('engines', -10)
+                    elif self.combat_phase == "movement" and not self.is_animating():
+                        self.turn_left(self.player_ship)
+                elif event.key == pygame.K_e:
+                    if self.combat_phase == "power" and self.power_allocation_mode:
+                        self.adjust_power_allocation('weapons', 10)
+                elif event.key == pygame.K_d:
+                    if self.combat_phase == "power" and self.power_allocation_mode:
+                        self.adjust_power_allocation('weapons', -10)
+                    elif self.combat_phase == "movement" and not self.is_animating():
+                        self.turn_right(self.player_ship)
                 # WASD Movement controls (only if not animating)
                 elif event.key == pygame.K_w:
-                    if self.combat_phase == "movement" and not self.is_animating():
+                    if self.combat_phase == "power" and self.power_allocation_mode:
+                        self.adjust_power_allocation('shields', 10)
+                    elif self.combat_phase == "movement" and not self.is_animating():
                         self.move_forward(self.player_ship)
                 elif event.key == pygame.K_s:
-                    if self.combat_phase == "movement" and not self.is_animating():
+                    if self.combat_phase == "power" and self.power_allocation_mode:
+                        self.adjust_power_allocation('shields', -10)
+                    elif self.combat_phase == "movement" and not self.is_animating():
                         self.move_backward(self.player_ship)
                 elif event.key == pygame.K_a:
                     if self.combat_phase == "movement" and not self.is_animating():
@@ -2778,10 +3987,11 @@ class CombatTestScreen:
                 elif event.key == pygame.K_d:
                     if self.combat_phase == "movement" and not self.is_animating():
                         self.turn_right(self.player_ship)
-                # Targeting controls
-                elif event.key == pygame.K_1 or event.key == pygame.K_2 or event.key == pygame.K_3:
-                    if self.combat_phase == "targeting":
-                        self.cycle_target_priority()
+                # Scroll combat log with PageUp/PageDown
+                elif event.key == pygame.K_PAGEUP:
+                    self.combat_log_scroll += 5  # Scroll up (show older messages)
+                elif event.key == pygame.K_PAGEDOWN:
+                    self.combat_log_scroll = max(0, self.combat_log_scroll - 5)  # Scroll down (show newer messages)
                 # Scroll weapons tab with UP/DOWN arrows
                 elif event.key == pygame.K_UP:
                     if self.status_panel.active_tab == 1:  # WEAPONS tab (index 1)
@@ -2836,6 +4046,13 @@ class CombatTestScreen:
                 if event.button == 1:  # Left click
                     mouse_pos = pygame.mouse.get_pos()
                     
+                    # Check if initiative popup is showing - dismiss on any click
+                    if self.show_initiative_popup:
+                        self.show_initiative_popup = False
+                        # After dismissing initiative, advance to movement phase
+                        self.advance_phase()
+                        continue
+                    
                     # Check if combat summary is showing - handle Continue button
                     if self.show_combat_summary:
                         if hasattr(self, '_summary_continue_button') and self._summary_continue_button.collidepoint(mouse_pos):
@@ -2867,23 +4084,79 @@ class CombatTestScreen:
                                     break
                         continue  # Don't process other clicks while assignment is showing
                     
+                    # Check if power allocation triangle is showing
+                    if self.combat_phase == "power" and self.power_allocation_mode == 'active':
+                        # Check if clicked on Confirm button
+                        if hasattr(self, '_power_confirm_button') and self._power_confirm_button.collidepoint(mouse_pos):
+                            self.confirm_power_allocation()
+                            continue
+                        # Check if clicked inside triangle
+                        if hasattr(self, '_power_triangle_bounds'):
+                            if self._is_point_in_triangle(mouse_pos, self._power_triangle_bounds):
+                                self._dragging_power_control = True
+                                self._update_power_from_mouse(mouse_pos)
+                                continue
+                    
+                    # Check if repair UI is showing
+                    if self.combat_phase == "repair" and self.repair_mode == 'active':
+                        # Check if clicked Done button
+                        if hasattr(self, '_repair_done_button') and self._repair_done_button.collidepoint(mouse_pos):
+                            self.finish_repairs()
+                            continue
+                        # Check if clicked on a system
+                        if hasattr(self, '_repair_click_areas'):
+                            for system_name, rect in self._repair_click_areas.items():
+                                if rect.collidepoint(mouse_pos):
+                                    self.perform_repair(system_name)
+                                    break
+                        continue
+                    
                     # Check if clicked on status panel tab
                     if self.status_panel.handle_click(mouse_pos):
                         continue  # Tab was clicked, don't process other clicks
                     
                     if self.combat_phase == "targeting":
                         current_ship = self.get_current_acting_ship()
-                        if current_ship == self.player_ship and self.target_selection_mode:
-                            # Check if clicked on a ship
-                            for ship in self.get_available_targets(current_ship):
-                                ship_pos = ship.position
-                                if ship_pos:
-                                    dx = mouse_pos[0] - ship_pos[0]
-                                    dy = mouse_pos[1] - ship_pos[1]
-                                    dist = (dx*dx + dy*dy) ** 0.5
-                                    if dist < 50:  # Within 50 pixels
-                                        self.select_target(current_ship, ship, self.target_selection_mode)
-                                        break
+                        if current_ship == self.player_ship:
+                            # Check if clicking on radial menu
+                            if self.radial_menu_active:
+                                if self.handle_radial_menu_click(mouse_pos):
+                                    continue  # Menu handled the click
+                            
+                            # Right-click on a ship opens radial menu
+                            if event.button == 3:
+                                self.add_to_log(f"MOUSE: Right-click at {mouse_pos}")
+                                # Check if right-clicked on a ship
+                                for ship in self.get_available_targets(current_ship):
+                                    ship_pos = ship.position
+                                    if ship_pos:
+                                        dx = mouse_pos[0] - ship_pos[0]
+                                        dy = mouse_pos[1] - ship_pos[1]
+                                        dist = (dx*dx + dy*dy) ** 0.5
+                                        if dist < 50:  # Within 50 pixels
+                                            self.add_to_log(f"  Opening radial menu for {ship.name}")
+                                            self.open_radial_menu(ship, mouse_pos)
+                                            break
+                                else:
+                                    # Right-clicked on empty space - close menu if open
+                                    if self.radial_menu_active:
+                                        self.add_to_log(f"  Closing radial menu (clicked empty space)")
+                                        self.close_radial_menu()
+                            
+                            # Left-click selects with radial menu (old system disabled)
+                            elif event.button == 1 and not self.radial_menu_active:
+                                self.add_to_log(f"MOUSE: Left-click at {mouse_pos}")
+                                # Could open radial menu on left-click too if desired
+                                for ship in self.get_available_targets(current_ship):
+                                    ship_pos = ship.position
+                                    if ship_pos:
+                                        dx = mouse_pos[0] - ship_pos[0]
+                                        dy = mouse_pos[1] - ship_pos[1]
+                                        dist = (dx*dx + dy*dy) ** 0.5
+                                        if dist < 50:  # Within 50 pixels
+                                            self.add_to_log(f"  Opening radial menu for {ship.name}")
+                                            self.open_radial_menu(ship, mouse_pos)
+                                            break
                     
             elif event.type == pygame.USEREVENT + 1:
                 # Timer for auto-advancing turn
@@ -2897,13 +4170,25 @@ class CombatTestScreen:
             
             elif event.type == pygame.USEREVENT + 3:
                 # Timer for AI firing
+                self.add_to_log("DEBUG: USEREVENT+3 timer fired (AI firing)")
                 self.execute_ai_firing()
                 pygame.time.set_timer(pygame.USEREVENT + 3, 0)  # Cancel timer
             
             elif event.type == pygame.USEREVENT + 4:
                 # Timer for AI targeting
+                self.add_to_log("DEBUG: USEREVENT+4 timer fired (AI targeting)")
                 self.execute_ai_targeting()
                 pygame.time.set_timer(pygame.USEREVENT + 4, 0)  # Cancel timer
+            
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:  # Left mouse release
+                    if hasattr(self, '_dragging_power_control'):
+                        self._dragging_power_control = False
+            
+            elif event.type == pygame.MOUSEMOTION:
+                if hasattr(self, '_dragging_power_control') and self._dragging_power_control:
+                    mouse_pos = pygame.mouse.get_pos()
+                    self._update_power_from_mouse(mouse_pos)
                 
             # Handle button events
             for button in self.buttons:
@@ -3127,10 +4412,11 @@ class CombatTestScreen:
         if self.combat_phase == "movement" and current_ship == self.player_ship:
             hint_text = "WASD: Move/Turn | ENTER: End Movement | R: Reset | ESC: Exit"
         elif self.combat_phase == "targeting" and current_ship == self.player_ship:
-            priority_text = f"[{self.target_selection_mode.upper()}]" if self.target_selection_mode else ""
-            hint_text = f"CLICK: Select Target {priority_text} | 1-3: Change Priority | ENTER: Done | R: Reset"
+            hint_text = "CLICK on ships for radial menu | ORANGE=Primary | BLUE=Secondary | PURPLE=Tertiary | ENTER: Done"
         elif self.combat_phase == "firing":
             hint_text = "SPACE: Fire | ENTER: Next Phase | R: Reset | ESC: Exit"
+        elif self.combat_phase == "repair" and current_ship == self.player_ship and self.repair_mode:
+            hint_text = f"CLICK System to Repair ({self.repairs_used}/{self.repairs_available} used) | ENTER: Done | R: Reset"
         else:
             hint_text = "ENTER: Next Phase | R: Reset | ESC: Exit"
         
@@ -3141,6 +4427,22 @@ class CombatTestScreen:
         # Draw weapon assignment popup if showing
         if self.show_weapon_assignment:
             self._draw_weapon_assignment()
+        
+        # Draw power allocation triangle if in power phase
+        if self.combat_phase == "power" and self.power_allocation_mode == 'active':
+            self._draw_power_triangle()
+        
+        # Draw repair UI if in repair phase
+        if self.combat_phase == "repair" and self.repair_mode == 'active':
+            self._draw_repair_ui()
+        
+        # Draw radial targeting menu if active
+        if self.radial_menu_active:
+            self._draw_radial_menu(self.screen)
+        
+        # Draw initiative popup if showing
+        if self.show_initiative_popup:
+            self._draw_initiative_popup()
         
         # Draw combat summary popup if showing
         if self.show_combat_summary:
@@ -3447,7 +4749,7 @@ class CombatTestScreen:
         self._draw_targeting_line_for_ship(self.enemy_ship, enemy_targets.get('primary'), LCARS_COLORS['purple'], None)
     
     def _draw_targeting_line_for_ship(self, attacker, target, color, label):
-        """Draw a single targeting line"""
+        """Draw a single targeting line with distance and hit chance"""
         if not target or not attacker.position or not target.position:
             return
         
@@ -3468,15 +4770,71 @@ class CombatTestScreen:
             target.hex_q, target.hex_r
         )
         
-        # Draw distance text at midpoint (only for primary)
+        # Draw distance and hit chance at midpoint (only for labeled targets)
         if label:
             mid_x = (p1[0] + p2[0]) // 2
             mid_y = (p1[1] + p2[1]) // 2
             
-            dist_text = f"{label}: {distance} hexes"
-            dist_surface = self.font_tiny.render(dist_text, True, color)
-            dist_rect = dist_surface.get_rect(center=(mid_x, mid_y))
-            self.screen.blit(dist_surface, dist_rect)
+            # Calculate hit chance using same formula as actual firing
+            # 1. Base accuracy from range
+            accuracy_mod = attacker.get_targeting_accuracy(distance)
+            
+            if accuracy_mod is None:
+                # Out of range
+                dist_text = f"{label}: {distance} hexes - OUT OF RANGE"
+                dist_surface = self.font_tiny.render(dist_text, True, LCARS_COLORS['alert_red'])
+                dist_rect = dist_surface.get_rect(center=(mid_x, mid_y))
+                self.screen.blit(dist_surface, dist_rect)
+                return
+            
+            # 2. Tactical officer skill bonus
+            tactical_skill = 0
+            if hasattr(attacker, 'tactical_crew') and attacker.tactical_crew.get('tactical_officer'):
+                tactical_skill = attacker.tactical_crew['tactical_officer'].attributes.get('tactical', 50)
+            
+            tactical_accuracy_bonus = (tactical_skill / 100) * 0.20
+            accuracy_mod *= (1.0 + tactical_accuracy_bonus)
+            
+            # 3. Target evasion from movement
+            hexes_moved = self.ship_hexes_moved.get(target, 0)
+            evasion_penalty = max(0.5, 1.0 - (hexes_moved * 0.05))
+            accuracy_mod *= evasion_penalty
+            
+            # 4. Multi-target penalty
+            if label == "PRIMARY":
+                target_penalty = 1.0
+            elif label == "SECONDARY":
+                target_penalty = 0.75
+            elif label == "TERTIARY":
+                target_penalty = 0.5
+            else:
+                target_penalty = 1.0
+            
+            accuracy_mod *= target_penalty
+            
+            # Convert to percentage
+            hit_chance_pct = int(accuracy_mod * 100)
+            
+            # Build display text
+            dist_text = f"{label}: {distance} hexes | {hit_chance_pct}% accuracy"
+            
+            # Add evasion info if target is moving
+            if hexes_moved > 0:
+                evasion_pct = int((1.0 - evasion_penalty) * 100)
+                dist_text += f" ({hexes_moved} hex evade)"
+            
+            # Draw text with background for readability
+            text_surface = self.font_tiny.render(dist_text, True, color)
+            text_rect = text_surface.get_rect(center=(mid_x, mid_y))
+            
+            # Draw semi-transparent background
+            bg_rect = text_rect.inflate(8, 4)
+            bg_surface = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+            bg_surface.fill((0, 0, 0, 180))
+            self.screen.blit(bg_surface, bg_rect)
+            
+            # Draw text on top
+            self.screen.blit(text_surface, text_rect)
             
     def _draw_ship_status(self):
         """Draw ship status content based on active tab"""
@@ -3837,21 +5195,363 @@ class CombatTestScreen:
         pygame.draw.rect(self.screen, LCARS_COLORS['blue'], bg_rect, 1)
         
     def _draw_combat_log(self):
-        """Draw combat log in bottom panel"""
+        """Draw combat log in bottom panel with scrolling"""
         log_x = 70
         log_y = self.screen_height - 105
         
-        # Title
-        title = self.font_small.render("COMBAT LOG", True, get_accent_color())
+        # Title with scroll indicator
+        scroll_info = f" ({len(self.combat_log)} msgs, scroll: {self.combat_log_scroll})"
+        title_text = "COMBAT LOG" + scroll_info
+        title = self.font_small.render(title_text, True, get_accent_color())
         self.screen.blit(title, (log_x, log_y))
         log_y += 22
         
-        # Log messages (last 3) - use fitted text to prevent overflow
+        # Show last 4 messages with scroll offset
         max_log_width = self.screen_width - 140  # Leave margin on both sides
-        for message in self.combat_log:
-            msg_surface = self.render_text_fitted(message, max_log_width, LCARS_COLORS['text_white'], self.font_tiny)
-            self.screen.blit(msg_surface, (log_x, log_y))
-            log_y += 18
+        visible_count = 4
+        
+        # Calculate which messages to show based on scroll
+        total_messages = len(self.combat_log)
+        if total_messages > 0:
+            # Clamp scroll to valid range
+            max_scroll = max(0, total_messages - visible_count)
+            self.combat_log_scroll = max(0, min(self.combat_log_scroll, max_scroll))
+            
+            # Show messages from end minus scroll
+            start_idx = max(0, total_messages - visible_count - self.combat_log_scroll)
+            end_idx = total_messages - self.combat_log_scroll
+            
+            for message in self.combat_log[start_idx:end_idx]:
+                msg_surface = self.render_text_fitted(message, max_log_width, LCARS_COLORS['text_white'], self.font_tiny)
+                self.screen.blit(msg_surface, (log_x, log_y))
+                log_y += 18
+        
+        # Scroll controls hint
+        hint = self.font_tiny.render("PageUp/PageDown to scroll log", True, LCARS_COLORS['text_gray'])
+        self.screen.blit(hint, (log_x, self.screen_height - 20))
+    
+    def _draw_power_triangle(self):
+        """Draw power allocation triangle interface"""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Triangle dimensions
+        triangle_size = 400
+        center_x = self.screen_width // 2
+        center_y = self.screen_height // 2
+        
+        # Define triangle vertices
+        # Top: Weapons, Bottom-Right: Shields, Bottom-Left: Engines
+        height = triangle_size * 0.866  # equilateral triangle height
+        top = (center_x, center_y - int(height * 0.6))  # Weapons
+        bottom_right = (center_x + triangle_size // 2, center_y + int(height * 0.4))  # Shields
+        bottom_left = (center_x - triangle_size // 2, center_y + int(height * 0.4))  # Engines
+        
+        self._power_triangle_bounds = (top, bottom_right, bottom_left)
+        
+        # Draw triangle background
+        pygame.draw.polygon(self.screen, LCARS_COLORS['bg_medium'], [top, bottom_right, bottom_left])
+        pygame.draw.polygon(self.screen, get_accent_color(), [top, bottom_right, bottom_left], 3)
+        
+        # Calculate control point position from power allocation
+        if not self.temp_power_allocation:
+            return
+        
+        available = self.temp_power_allocation['available']
+        if available == 0:
+            available = 1
+        
+        w_ratio = self.temp_power_allocation['weapons'] / available
+        s_ratio = self.temp_power_allocation['shields'] / available
+        e_ratio = self.temp_power_allocation['engines'] / available
+        
+        # Barycentric to Cartesian conversion
+        control_x = w_ratio * top[0] + s_ratio * bottom_right[0] + e_ratio * bottom_left[0]
+        control_y = w_ratio * top[1] + s_ratio * bottom_right[1] + e_ratio * bottom_left[1]
+        
+        # Draw control point
+        control_size = 12
+        pygame.draw.circle(self.screen, LCARS_COLORS['yellow'], (int(control_x), int(control_y)), control_size)
+        pygame.draw.circle(self.screen, get_accent_color(), (int(control_x), int(control_y)), control_size, 2)
+        
+        # Draw lines from control point to vertices (show allocation)
+        pygame.draw.line(self.screen, LCARS_COLORS['alert_red'], (control_x, control_y), top, 2)
+        pygame.draw.line(self.screen, LCARS_COLORS['blue'], (control_x, control_y), bottom_right, 2)
+        pygame.draw.line(self.screen, LCARS_COLORS['green'], (control_x, control_y), bottom_left, 2)
+        
+        # Draw system labels and values
+        weapons_text = self.font_medium.render("WEAPONS", True, LCARS_COLORS['alert_red'])
+        weapons_val = self.font_small.render(f"{self.temp_power_allocation['weapons']}", True, LCARS_COLORS['text_white'])
+        self.screen.blit(weapons_text, (top[0] - weapons_text.get_width() // 2, top[1] - 50))
+        self.screen.blit(weapons_val, (top[0] - weapons_val.get_width() // 2, top[1] - 30))
+        
+        shields_text = self.font_medium.render("SHIELDS", True, LCARS_COLORS['blue'])
+        shields_val = self.font_small.render(f"{self.temp_power_allocation['shields']}", True, LCARS_COLORS['text_white'])
+        self.screen.blit(shields_text, (bottom_right[0] - shields_text.get_width() // 2, bottom_right[1] + 20))
+        self.screen.blit(shields_val, (bottom_right[0] - shields_val.get_width() // 2, bottom_right[1] + 40))
+        
+        engines_text = self.font_medium.render("ENGINES", True, LCARS_COLORS['green'])
+        engines_val = self.font_small.render(f"{self.temp_power_allocation['engines']}", True, LCARS_COLORS['text_white'])
+        self.screen.blit(engines_text, (bottom_left[0] - engines_text.get_width() // 2, bottom_left[1] + 20))
+        self.screen.blit(engines_val, (bottom_left[0] - engines_val.get_width() // 2, bottom_left[1] + 40))
+        
+        # Draw title
+        title = self.font_large.render("POWER ALLOCATION", True, get_accent_color())
+        title_rect = title.get_rect(center=(center_x, center_y - triangle_size // 2 - 100))
+        self.screen.blit(title, title_rect)
+        
+        # Draw available power
+        total = self.temp_power_allocation['engines'] + self.temp_power_allocation['shields'] + self.temp_power_allocation['weapons']
+        avail_text = f"ALLOCATED: {total} / {available}"
+        avail_surface = self.font_medium.render(avail_text, True, LCARS_COLORS['text_gray'])
+        avail_rect = avail_surface.get_rect(center=(center_x, center_y - triangle_size // 2 - 70))
+        self.screen.blit(avail_surface, avail_rect)
+        
+        # Draw confirm button
+        button_width = 200
+        button_height = 50
+        button_x = center_x - button_width // 2
+        button_y = center_y + triangle_size // 2 + 30
+        button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+        
+        pygame.draw.rect(self.screen, LCARS_COLORS['green'], button_rect)
+        pygame.draw.rect(self.screen, get_accent_color(), button_rect, 2)
+        
+        confirm_text = self.font_medium.render("CONFIRM", True, LCARS_COLORS['bg_dark'])
+        confirm_rect = confirm_text.get_rect(center=button_rect.center)
+        self.screen.blit(confirm_text, confirm_rect)
+        
+        self._power_confirm_button = button_rect
+        
+        # Instructions
+        inst_text = "Drag the point to allocate power | ENTER: Confirm | ESC: Cancel"
+        inst_surface = self.font_small.render(inst_text, True, LCARS_COLORS['text_gray'])
+        inst_rect = inst_surface.get_rect(center=(center_x, button_y + button_height + 30))
+        self.screen.blit(inst_surface, inst_rect)
+    
+    def _draw_initiative_popup(self):
+        """Draw initiative roll results popup"""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(200)
+        overlay.fill((0, 0, 0))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Window dimensions
+        window_width = 700
+        window_height = 400
+        window_x = (self.screen_width - window_width) // 2
+        window_y = (self.screen_height - window_height) // 2
+        
+        # Draw main panel
+        panel_rect = pygame.Rect(window_x, window_y, window_width, window_height)
+        pygame.draw.rect(self.screen, LCARS_COLORS['bg_dark'], panel_rect)
+        pygame.draw.rect(self.screen, get_accent_color(), panel_rect, 4)
+        
+        # Title
+        title = self.font_large.render("INITIATIVE ROLL", True, get_accent_color())
+        title_rect = title.get_rect(center=(self.screen_width // 2, window_y + 50))
+        self.screen.blit(title, title_rect)
+        
+        # Header row
+        header_y = window_y + 100
+        header_font = self.font_medium
+        
+        name_x = window_x + 50
+        skill_x = window_x + 300
+        roll_x = window_x + 420
+        total_x = window_x + 560
+        
+        name_text = header_font.render("SHIP", True, LCARS_COLORS['text_gray'])
+        self.screen.blit(name_text, (name_x, header_y))
+        
+        skill_text = header_font.render("COMMAND", True, LCARS_COLORS['text_gray'])
+        self.screen.blit(skill_text, (skill_x, header_y))
+        
+        roll_text = header_font.render("ROLL", True, LCARS_COLORS['text_gray'])
+        self.screen.blit(roll_text, (roll_x, header_y))
+        
+        total_text = header_font.render("TOTAL", True, LCARS_COLORS['text_gray'])
+        self.screen.blit(total_text, (total_x, header_y))
+        
+        # Draw line under header
+        pygame.draw.line(self.screen, get_accent_color(),
+                        (window_x + 30, header_y + 30),
+                        (window_x + window_width - 30, header_y + 30), 2)
+        
+        # List initiative rolls
+        row_y = header_y + 50
+        row_height = 40
+        
+        for i, (ship, total, roll, base) in enumerate(self.initiative_rolls):
+            y = row_y + i * row_height
+            
+            # Highlight winner
+            if i == 0:
+                highlight_rect = pygame.Rect(window_x + 20, y - 5, window_width - 40, row_height - 5)
+                pygame.draw.rect(self.screen, LCARS_COLORS['green'], highlight_rect, 2)
+            
+            # Ship name (with color based on faction)
+            if ship == self.player_ship:
+                name_color = LCARS_COLORS['blue']
+                ship_name = f"▶ {ship.name}"
+            else:
+                name_color = LCARS_COLORS['alert_red']
+                ship_name = ship.name
+            
+            name_surface = self.font_small.render(ship_name, True, name_color)
+            self.screen.blit(name_surface, (name_x, y))
+            
+            # Base skill
+            skill_surface = self.font_small.render(f"{base}", True, LCARS_COLORS['text_white'])
+            self.screen.blit(skill_surface, (skill_x + 30, y))
+            
+            # Roll
+            roll_surface = self.font_small.render(f"d100: {roll}", True, LCARS_COLORS['yellow'])
+            self.screen.blit(roll_surface, (roll_x, y))
+            
+            # Total
+            total_color = LCARS_COLORS['green'] if i == 0 else LCARS_COLORS['text_white']
+            total_surface = self.font_small.render(f"{total}", True, total_color)
+            self.screen.blit(total_surface, (total_x + 20, y))
+        
+        # Winner announcement
+        winner_y = window_y + window_height - 80
+        winner_ship = self.initiative_rolls[0][0]
+        if winner_ship == self.player_ship:
+            winner_text = "YOU HAVE INITIATIVE!"
+            winner_color = LCARS_COLORS['green']
+        else:
+            winner_text = f"{winner_ship.name.upper()} HAS INITIATIVE"
+            winner_color = LCARS_COLORS['alert_red']
+        
+        winner_surface = self.font_large.render(winner_text, True, winner_color)
+        winner_rect = winner_surface.get_rect(center=(self.screen_width // 2, winner_y))
+        self.screen.blit(winner_surface, winner_rect)
+        
+        # Instructions
+        inst_text = "Press ENTER or SPACE to continue"
+        inst_surface = self.font_small.render(inst_text, True, LCARS_COLORS['text_gray'])
+        inst_rect = inst_surface.get_rect(center=(self.screen_width // 2, winner_y + 40))
+        self.screen.blit(inst_surface, inst_rect)
+    
+    def _draw_repair_ui(self):
+        """Draw repair selection UI"""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Window dimensions - made taller to fit all systems
+        window_width = 600
+        window_height = 650
+        window_x = (self.screen_width - window_width) // 2
+        window_y = (self.screen_height - window_height) // 2
+        
+        # Draw main panel
+        panel_rect = pygame.Rect(window_x, window_y, window_width, window_height)
+        pygame.draw.rect(self.screen, LCARS_COLORS['bg_dark'], panel_rect)
+        pygame.draw.rect(self.screen, get_accent_color(), panel_rect, 3)
+        
+        # Title
+        title = self.font_large.render("ENGINEERING REPAIRS", True, get_accent_color())
+        title_rect = title.get_rect(center=(self.screen_width // 2, window_y + 40))
+        self.screen.blit(title, title_rect)
+        
+        # Repairs available
+        repairs_text = f"REPAIRS AVAILABLE: {self.repairs_available - self.repairs_used} / {self.repairs_available}"
+        repairs_surface = self.font_medium.render(repairs_text, True, LCARS_COLORS['text_white'])
+        repairs_rect = repairs_surface.get_rect(center=(self.screen_width // 2, window_y + 80))
+        self.screen.blit(repairs_surface, repairs_rect)
+        
+        # List systems
+        systems_y = window_y + 130
+        system_height = 45  # Slightly more spacing
+        self._repair_click_areas = {}
+        
+        for i, (system_name, health) in enumerate(self.player_ship.systems.items()):
+            system_y = systems_y + i * system_height
+            
+            # System box
+            box_rect = pygame.Rect(window_x + 20, system_y, window_width - 40, system_height - 5)
+            
+            # Color based on health
+            if health >= 75:
+                box_color = LCARS_COLORS['green']
+            elif health >= 50:
+                box_color = LCARS_COLORS['yellow']
+            elif health >= 25:
+                box_color = LCARS_COLORS['orange']
+            else:
+                box_color = LCARS_COLORS['alert_red']
+            
+            # Highlight if hovering
+            mouse_pos = pygame.mouse.get_pos()
+            is_hovering = box_rect.collidepoint(mouse_pos)
+            
+            if is_hovering and health < 100:
+                pygame.draw.rect(self.screen, box_color, box_rect)
+                text_color = LCARS_COLORS['bg_dark']
+            else:
+                pygame.draw.rect(self.screen, LCARS_COLORS['bg_medium'], box_rect)
+                pygame.draw.rect(self.screen, box_color, box_rect, 2)
+                text_color = box_color
+            
+            # System name and health
+            system_display = system_name.replace('_', ' ').title()
+            system_text = f"{system_display}: {health:.0f}%"
+            text_surface = self.font_small.render(system_text, True, text_color)
+            text_rect = text_surface.get_rect(midleft=(box_rect.x + 10, box_rect.centery))
+            self.screen.blit(text_surface, text_rect)
+            
+            # Health bar
+            bar_width = 150
+            bar_height = 15
+            bar_x = box_rect.right - bar_width - 10
+            bar_y = box_rect.centery - bar_height // 2
+            
+            # Background bar
+            pygame.draw.rect(self.screen, LCARS_COLORS['bg_dark'], 
+                           (bar_x, bar_y, bar_width, bar_height))
+            
+            # Health fill
+            fill_width = int(bar_width * (health / 100))
+            if fill_width > 0:
+                pygame.draw.rect(self.screen, box_color,
+                               (bar_x, bar_y, fill_width, bar_height))
+            
+            pygame.draw.rect(self.screen, box_color,
+                           (bar_x, bar_y, bar_width, bar_height), 1)
+            
+            # Store click area for this system
+            if health < 100:
+                self._repair_click_areas[system_name] = box_rect
+        
+        # Done button
+        button_width = 200
+        button_height = 50
+        button_x = (self.screen_width - button_width) // 2
+        button_y = window_y + window_height - 70
+        button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+        
+        pygame.draw.rect(self.screen, LCARS_COLORS['green'], button_rect)
+        pygame.draw.rect(self.screen, get_accent_color(), button_rect, 2)
+        
+        done_text = self.font_medium.render("DONE", True, LCARS_COLORS['bg_dark'])
+        done_rect = done_text.get_rect(center=button_rect.center)
+        self.screen.blit(done_text, done_rect)
+        
+        self._repair_done_button = button_rect
+        
+        # Instructions
+        inst_text = "Click damaged system to repair | ENTER: Done"
+        inst_surface = self.font_tiny.render(inst_text, True, LCARS_COLORS['text_gray'])
+        inst_rect = inst_surface.get_rect(center=(self.screen_width // 2, button_y + button_height + 20))
+        self.screen.blit(inst_surface, inst_rect)
     
     def _draw_combat_summary(self):
         """Draw combat damage summary popup window"""

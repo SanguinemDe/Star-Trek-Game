@@ -61,6 +61,7 @@ class ShipAI:
         self.preferred_range = 6  # Optimal range to maintain (hexes)
         self.aggressive = True  # Will close to optimal range
         self.retreat_threshold = 0.3  # Retreat when hull drops below this %
+        self.evasion_priority = 0.5  # How much to prioritize evasive movement (0.0-1.0)
         
         # Tactical state
         self.last_target_arc = None
@@ -351,9 +352,14 @@ class ShipAI:
                 if remaining_mp == 0:
                     return moves
             
-            # PRIORITY 3: Get weapons on target if not in arc
+            # PRIORITY 3: Range management (check BEFORE weapon arcs)
+            # This ensures ships don't turn uselessly when they should be backing away
+            range_diff = distance - self.preferred_range
+            
+            # Get weapons on target if not in arc (but only if range is OK)
             weapons_in_arc = self._check_weapons_in_arc(target_arc)
-            if not weapons_in_arc and remaining_mp >= 2:
+            if not weapons_in_arc and remaining_mp >= 2 and abs(range_diff) <= 2:
+                # Only turn to bring weapons to bear if we're at reasonable range
                 logger.info(f"{self.ship.name}: Turning to bring weapons on target")
                 turn_dir = self._determine_turn_direction()
                 if turn_dir:
@@ -362,39 +368,49 @@ class ShipAI:
                     remaining_mp -= 2
             
             # PRIORITY 4: Range management
-            range_diff = distance - self.preferred_range
+            # Always try to maintain optimal range
+            if range_diff > 1 and self.aggressive:
+                # Too far, close in (only if aggressive)
+                logger.info(f"{self.ship.name}: Closing to optimal range (currently {distance}, want {self.preferred_range})")
+                steps = min(remaining_mp, max(1, abs(range_diff)))
+                for _ in range(steps):
+                    moves.append('forward')
+                    remaining_mp -= 1
+            elif range_diff < -1:
+                # Too close, back off (always back off if too close)
+                logger.info(f"{self.ship.name}: Backing to optimal range (currently {distance}, want {self.preferred_range})")
+                steps = min(remaining_mp, max(1, abs(range_diff)))
+                for _ in range(steps):
+                    moves.append('backward')
+                    remaining_mp -= 1
             
-            if abs(range_diff) > 2:  # Out of optimal range (more than 2 hexes off)
-                if range_diff > 0 and self.aggressive:
-                    # Too far, close in
-                    logger.info(f"{self.ship.name}: Closing to optimal range")
-                    steps = min(remaining_mp, max(1, abs(range_diff) // 2))
-                    for _ in range(steps):
-                        moves.append('forward')
-                        remaining_mp -= 1
-                elif range_diff < 0:
-                    # Too close, back off
-                    logger.info(f"{self.ship.name}: Backing to optimal range")
-                    steps = min(remaining_mp, max(1, abs(range_diff) // 2))
-                    for _ in range(steps):
-                        moves.append('backward')
-                        remaining_mp -= 1
+            # PRIORITY 5: Use ALL remaining movement points for tactical maneuvering
+            # Small/fast ships MUST stay mobile to survive
+            # TURNING RULES: Must move before turning, can only turn once per hex moved
+            # Valid pattern: forward, turn, forward, turn, forward...
             
-            # PRIORITY 5: Tactical maneuvering at optimal range
-            elif remaining_mp >= 1:
-                # At good range, make sure we're maneuvering
-                if remaining_mp >= 2 and random.random() < 0.4:  # 40% chance for evasive turn
-                    logger.info(f"{self.ship.name}: Evasive maneuvers")
+            while remaining_mp > 0:
+                if remaining_mp >= 2 and self.evasion_priority > 0.3:
+                    # Evasive maneuver: move + turn (legal sequence)
+                    logger.info(f"{self.ship.name}: Evasive maneuver ({remaining_mp} MP left)")
                     moves.append('forward')
                     turn_choice = random.choice(['turn_left', 'turn_right'])
                     moves.append(turn_choice)
                     remaining_mp -= 2
-                elif weapons_in_arc:
-                    # We're in good position, maybe just advance
-                    if remaining_mp >= 1:
-                        logger.info(f"{self.ship.name}: Maintaining position")
-                        moves.append('forward')
-                        remaining_mp -= 1
+                elif remaining_mp >= 2 and self.aggressive and random.random() < 0.6:
+                    # Aggressive tactical: move + turn (legal sequence)
+                    logger.info(f"{self.ship.name}: Aggressive advance with turn ({remaining_mp} MP left)")
+                    moves.append('forward')
+                    turn_choice = random.choice(['turn_left', 'turn_right'])
+                    moves.append(turn_choice)
+                    remaining_mp -= 2
+                elif remaining_mp >= 1:
+                    # Just move forward
+                    logger.info(f"{self.ship.name}: Straight advance ({remaining_mp} MP left)")
+                    moves.append('forward')
+                    remaining_mp -= 1
+                else:
+                    break
             
             logger.info(f"{self.ship.name}: Planned moves: {moves}")
             return moves
@@ -737,24 +753,28 @@ class AIPersonality:
         'preferred_range': 4,  # Close range combat
         'aggressive': True,
         'retreat_threshold': 0.2,  # Only retreat at 20% hull
+        'evasion_priority': 0.3,  # Low evasion (prefer direct assault)
     }
     
     DEFENSIVE = {
         'preferred_range': 8,  # Long range combat
         'aggressive': False,
         'retreat_threshold': 0.5,  # Retreat at 50% hull
+        'evasion_priority': 0.8,  # High evasion (stay mobile for defense)
     }
     
     BALANCED = {
         'preferred_range': 6,  # Medium range combat
         'aggressive': True,
         'retreat_threshold': 0.3,  # Retreat at 30% hull
+        'evasion_priority': 0.5,  # Moderate evasion
     }
     
     SNIPER = {
         'preferred_range': 10,  # Very long range combat
         'aggressive': False,
         'retreat_threshold': 0.4,  # Retreat at 40% hull
+        'evasion_priority': 0.6,  # Moderate-high evasion (kiting)
     }
     
     @staticmethod
@@ -778,5 +798,6 @@ class AIPersonality:
         ai.preferred_range = personality['preferred_range']
         ai.aggressive = personality['aggressive']
         ai.retreat_threshold = personality['retreat_threshold']
+        ai.evasion_priority = personality['evasion_priority']
         
         logger.info(f"Applied {personality_name.upper()} personality to {ai.ship.name}")
