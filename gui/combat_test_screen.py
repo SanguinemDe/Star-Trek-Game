@@ -2948,7 +2948,13 @@ class CombatTestScreen:
         # Apply allocation
         ship.redistribute_power(engines_power, shields_power, weapons_power)
         
+        # Debug: Show movement calculation
+        base_mp = ship.impulse_speed
+        bonus_mp = ship.get_engine_power_bonus()
+        current_mp = ship.get_current_movement_points()
+        
         self.add_to_log(f"{ship.name}: Power allocated (E:{engines_power} S:{shields_power} W:{weapons_power})")
+        self.add_to_log(f"  Movement: {base_mp} base + {bonus_mp:.1f} bonus = {current_mp} MP")
         
         # Complete action
         self.complete_ship_action()
