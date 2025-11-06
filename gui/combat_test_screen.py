@@ -1072,9 +1072,10 @@ class CombatTestScreen:
         self.animation_start_facing = None  # Starting facing for rotation
         self.animation_end_facing = None  # Ending facing for rotation
         self.animation_progress = 0.0  # 0.0 to 1.0
-        self.animation_speed = 1.5  # Speed multiplier (lower = slower/smoother)
+        self.animation_speed = 0.5  # Speed multiplier (LOWER = slower/smoother - 0.5 = 2 seconds per hex)
+        self.rotation_speed = 0.7  # Rotation animation speed (can be different from movement)
         self.animation_callback = None  # Function to call when animation completes
-        self.pending_ai_moves = []  # Queue of AI moves to execute
+        self.pending_ai_moves = []  # Queue of AI moves to execute (for sequential animations)
         
         # Weapon effects system
         self.active_weapon_effects = []  # List of active weapon effects
@@ -1913,11 +1914,11 @@ class CombatTestScreen:
         self.has_moved_this_turn = False
         self.turns_this_activation = 0
         
-        # Log with power bonus indicator if not at 100 power
-        engine_power = ship.power_distribution['engines']
-        if engine_power != 100:
-            power_bonus = ship.get_engine_power_bonus()
-            self.add_to_log(f"{ship.name}: {self.movement_points_remaining} movement points (base {ship.impulse_speed} × {power_bonus:.2f})")
+        # Log with power bonus indicator
+        import math
+        bonus_mp = ship.get_engine_power_bonus()
+        if bonus_mp > 0:
+            self.add_to_log(f"{ship.name}: {self.movement_points_remaining} movement points (base {ship.impulse_speed} + {math.ceil(bonus_mp)} power bonus)")
         else:
             self.add_to_log(f"{ship.name}: {self.movement_points_remaining} movement points")
         
@@ -2219,12 +2220,12 @@ class CombatTestScreen:
         
         This method handles the entire movement phase for AI-controlled ships:
         1. Gets movement decisions from the ship's AI controller
-        2. Executes all moves immediately (no animation delays)
-        3. Syncs visual position to match final hex coordinates
-        4. Verifies no collisions occurred during movement
+        2. Queues all moves for smooth sequential animations
+        3. Each move is animated before the next begins
+        4. Completes action after all animations finish
         
-        AI moves are executed instantly to keep combat flowing smoothly.
-        The position sync at the end ensures ships render at correct locations.
+        AI moves now use the same smooth animation system as player moves
+        for a consistent visual experience.
         """
         ship = self.get_current_acting_ship()
         if not ship or ship == self.player_ship:
@@ -2274,55 +2275,50 @@ class CombatTestScreen:
             self.complete_ship_action()
             return
         
-        # Execute all moves immediately (no animation queuing for AI)
+        # Queue all moves for smooth sequential animation
+        # Each move will animate before the next one begins
+        self.pending_ai_moves = []
+        
         for i, move_command in enumerate(moves):
-            self.add_to_log(f"DEBUG: {ship.name} executing move {i+1}/{len(moves)}: {move_command}")
-            self.add_to_log(f"DEBUG:   Before: ({ship.hex_q},{ship.hex_r}) facing {ship.facing}")
+            # Create a closure that captures the move command and ship
+            def make_move_func(cmd, ship_ref, move_num, total_moves):
+                def execute_move():
+                    self.add_to_log(f"DEBUG: {ship_ref.name} executing move {move_num}/{total_moves}: {cmd}")
+                    self.add_to_log(f"DEBUG:   Before: ({ship_ref.hex_q},{ship_ref.hex_r}) facing {ship_ref.facing}")
+                    
+                    success = False
+                    if cmd == 'forward':
+                        success = self.move_forward(ship_ref)
+                    elif cmd == 'backward':
+                        success = self.move_backward(ship_ref)
+                    elif cmd == 'turn_left':
+                        success = self.turn_left(ship_ref)
+                    elif cmd == 'turn_right':
+                        success = self.turn_right(ship_ref)
+                    
+                    self.add_to_log(f"DEBUG:   After: ({ship_ref.hex_q},{ship_ref.hex_r}) facing {ship_ref.facing} - Success: {success}")
+                    
+                    # If move failed (blocked), clear remaining queued moves
+                    if not success and cmd in ['forward', 'backward']:
+                        self.add_to_log(f"{ship_ref.name}: Movement blocked, clearing remaining moves")
+                        self.pending_ai_moves.clear()
+                        # Complete action immediately since we can't continue
+                        self.complete_ship_action()
+                return execute_move
             
-            success = False
-            if move_command == 'forward':
-                success = self.move_forward(ship)
-            elif move_command == 'backward':
-                success = self.move_backward(ship)
-            elif move_command == 'turn_left':
-                success = self.turn_left(ship)
-            elif move_command == 'turn_right':
-                success = self.turn_right(ship)
-            
-            self.add_to_log(f"DEBUG:   After: ({ship.hex_q},{ship.hex_r}) facing {ship.facing} - Success: {success}")
-            
-            # If move failed (blocked), stop executing remaining moves
-            if not success and move_command in ['forward', 'backward']:
-                self.add_to_log(f"{ship.name}: Movement blocked, stopping remaining moves")
-                break
+            self.pending_ai_moves.append(make_move_func(move_command, ship, i+1, len(moves)))
         
-        # Log final position
-        self.add_to_log(f"DEBUG: {ship.name} ended at ({ship.hex_q},{ship.hex_r}) facing {ship.facing}")
+        # Add a final callback to complete the action after all moves finish
+        def complete_ai_movement():
+            self.add_to_log(f"DEBUG: {ship.name} ended at ({ship.hex_q},{ship.hex_r}) facing {ship.facing}")
+            self.complete_ship_action()
         
-        # CRITICAL FIX: Update ship's visual position to match final hex coordinates
-        # AI moves execute instantly without animations, so position must be manually synced
-        ship.position = self.hex_grid.axial_to_pixel(ship.hex_q, ship.hex_r)
-        self.add_to_log(f"DEBUG: {ship.name} position synced to pixel {ship.position}")
+        self.pending_ai_moves.append(complete_ai_movement)
         
-        # VERIFICATION: Check if this ship is now overlapping with any other ship
-        for other_ship in self.all_ships:
-            if other_ship == ship or (hasattr(other_ship, 'hull') and other_ship.hull <= 0):
-                continue
-            
-            # Check if centers match
-            if other_ship.hex_q == ship.hex_q and other_ship.hex_r == ship.hex_r:
-                self.add_to_log(f"!!! ERROR: {ship.name} and {other_ship.name} are BOTH at ({ship.hex_q},{ship.hex_r})!")
-            
-            # Check multi-hex overlap
-            if hasattr(ship, 'get_occupied_hexes') and hasattr(other_ship, 'get_occupied_hexes'):
-                ship_hexes = set(ship.get_occupied_hexes())
-                other_hexes = set(other_ship.get_occupied_hexes())
-                overlap = ship_hexes & other_hexes
-                if overlap:
-                    self.add_to_log(f"!!! ERROR: {ship.name} and {other_ship.name} overlap at hexes: {overlap}!")
-        
-        # Complete action immediately after all moves
-        self.complete_ship_action()
+        # Start the first move (subsequent moves will be processed by update loop)
+        if len(self.pending_ai_moves) > 0:
+            first_move = self.pending_ai_moves.pop(0)
+            first_move()
     
     def execute_ai_firing(self):
         """Execute AI-controlled ship firing"""
@@ -2734,7 +2730,30 @@ class CombatTestScreen:
             self.temp_power_allocation['weapons']
         )
         
-        self.add_to_log(f"{ship.name}: Power allocated")
+        # Log power allocation with actual bonuses
+        e_power = self.temp_power_allocation['engines']
+        s_power = self.temp_power_allocation['shields']
+        w_power = self.temp_power_allocation['weapons']
+        
+        # Calculate bonuses (rounded up to whole numbers for display)
+        import math
+        e_bonus = ship.get_engine_power_bonus()
+        s_bonus = ship.get_shield_power_bonus()
+        w_bonus = ship.get_weapon_power_bonus()
+        
+        bonus_text = []
+        if e_bonus > 0:
+            bonus_text.append(f"+{math.ceil(e_bonus)} MP")
+        if s_bonus > 1.0:
+            bonus_text.append(f"{s_bonus:.2f}x shields")
+        if w_bonus > 1.0:
+            bonus_text.append(f"{w_bonus:.2f}x arrays")
+        
+        if bonus_text:
+            self.add_to_log(f"{ship.name}: Power allocated (E:{e_power} S:{s_power} W:{w_power}) → {', '.join(bonus_text)}")
+        else:
+            self.add_to_log(f"{ship.name}: Power allocated (E:{e_power} S:{s_power} W:{w_power}) → Balanced")
+        
         self.power_allocation_mode = None
         self.temp_power_allocation = {}
         
@@ -3362,8 +3381,8 @@ class CombatTestScreen:
         
         # Apply damage using ship's method (includes system damage)
         damage_result = target.take_damage(actual_damage, shield_facing_hit)
-        shield_damage = actual_damage - damage_result.get('hull_damage', 0)
-        hull_damage = damage_result.get('hull_damage', 0)
+        hull_damage = max(0, damage_result.get('hull_damage', 0))  # Ensure non-negative
+        shield_damage = max(0, actual_damage - hull_damage)  # Ensure non-negative
         
         # Log system damage if any occurred
         if damage_result.get('system_damage'):
@@ -3481,10 +3500,10 @@ class CombatTestScreen:
         
         # Torpedoes: 90% blocked by shields, 10% bleeds through to hull
         # Apply damage using ship's method (includes system damage)
-        damage_result = target.take_damage(actual_damage, shield_facing_hit)
+        damage_result = target.take_damage(actual_damage, shield_facing_hit, damage_type='torpedo')
         
-        shield_damage = int(actual_damage * 0.9)
-        hull_damage = damage_result.get('hull_damage', 0)
+        hull_damage = max(0, damage_result.get('hull_damage', 0))  # Ensure non-negative
+        shield_damage = max(0, int(actual_damage * 0.9))  # Ensure non-negative
         
         # Log system damage if any occurred
         if damage_result.get('system_damage'):
@@ -3640,8 +3659,8 @@ class CombatTestScreen:
                 
                 # Energy weapons: apply damage using ship's method (includes system damage)
                 damage_result = target.take_damage(actual_damage, shield_facing_hit)
-                shield_damage = actual_damage - damage_result.get('hull_damage', 0)
-                hull_damage = damage_result.get('hull_damage', 0)
+                hull_damage = max(0, damage_result.get('hull_damage', 0))  # Ensure non-negative
+                shield_damage = max(0, actual_damage - hull_damage)  # Ensure non-negative
                 
                 # Log system damage if any occurred
                 if damage_result.get('system_damage'):
@@ -3756,10 +3775,10 @@ class CombatTestScreen:
                         logger.debug(f"{attacker.name} {torpedo.torpedo_type} torpedo MISSED {target.name}")
                 
                 # Torpedoes: apply damage using ship's method (includes system damage)
-                damage_result = target.take_damage(actual_damage, shield_facing_hit)
+                damage_result = target.take_damage(actual_damage, shield_facing_hit, damage_type='torpedo')
                 
-                shield_damage = int(actual_damage * 0.9)
-                hull_damage = damage_result.get('hull_damage', 0)
+                hull_damage = max(0, damage_result.get('hull_damage', 0))  # Ensure non-negative
+                shield_damage = max(0, int(actual_damage * 0.9))  # Ensure non-negative
                 
                 # Log system damage if any occurred
                 if damage_result.get('system_damage'):
@@ -3915,6 +3934,13 @@ class CombatTestScreen:
                     if self.combat_phase == "firing":
                         self.add_to_log("KEY: SPACE pressed - firing weapons")
                         self.fire_weapons()
+                    elif self.is_animating():
+                        # Skip current animation
+                        self.skip_current_animation()
+                elif event.key == pygame.K_TAB:
+                    # TAB always skips animations
+                    if self.is_animating():
+                        self.skip_current_animation()
                 elif event.key == pygame.K_RETURN:
                     self.add_to_log(f"KEY: ENTER pressed - phase={self.combat_phase}")
                     # Power allocation confirmation
@@ -4184,7 +4210,19 @@ class CombatTestScreen:
         
         # Update movement animations
         if self.animating_ship is not None:
-            self.animation_progress += dt * self.animation_speed
+            # Use different speeds for movement vs rotation
+            is_movement = (self.animation_start_pos is not None and self.animation_end_pos is not None)
+            is_rotation = (self.animation_start_facing is not None and self.animation_end_facing is not None)
+            
+            # Use faster speed if rotating, slower if moving
+            if is_movement and not is_rotation:
+                speed = self.animation_speed  # Pure movement
+            elif is_rotation and not is_movement:
+                speed = self.rotation_speed  # Pure rotation
+            else:
+                speed = self.animation_speed  # Both - use movement speed
+            
+            self.animation_progress += dt * speed
             
             if self.animation_progress >= 1.0:
                 # Animation complete
@@ -4212,10 +4250,12 @@ class CombatTestScreen:
                 self.animation_end_facing = None
                 self.animation_progress = 0.0
             else:
-                # Interpolate position (smooth ease-in-out)
+                # Interpolate with smooth ease-in-out
                 t = self.animation_progress
-                # Ease-in-out cubic for smooth motion
-                t = t * t * (3.0 - 2.0 * t)
+                
+                # Smoothstep easing function (even smoother than cubic)
+                # Creates very natural-looking motion with gentle acceleration/deceleration
+                t = t * t * t * (t * (t * 6 - 15) + 10)
                 
                 # Position interpolation
                 if self.animation_start_pos and self.animation_end_pos:
@@ -4285,6 +4325,42 @@ class CombatTestScreen:
     def is_animating(self):
         """Check if any ship is currently animating"""
         return self.animating_ship is not None
+    
+    def skip_current_animation(self):
+        """
+        Skip the current animation and jump to final state
+        Useful for speeding up AI turns or when player is impatient
+        """
+        if self.animating_ship is None:
+            return
+        
+        # Snap to final state immediately
+        if self.animation_end_pos is not None:
+            self.animating_ship.position = self.animation_end_pos
+        if self.animation_end_facing is not None:
+            self.animating_ship.facing = self.animation_end_facing
+            # Clear animation facing
+            if hasattr(self.animating_ship, '_anim_facing'):
+                delattr(self.animating_ship, '_anim_facing')
+        
+        # Execute callback if set
+        if self.animation_callback:
+            callback = self.animation_callback
+            self.animation_callback = None
+            callback()
+        
+        # Clear animation state
+        self.animating_ship = None
+        self.animation_start_pos = None
+        self.animation_end_pos = None
+        self.animation_start_facing = None
+        self.animation_end_facing = None
+        self.animation_progress = 0.0
+        
+        # If there are pending moves, start the next one immediately
+        if len(self.pending_ai_moves) > 0:
+            next_move = self.pending_ai_moves.pop(0)
+            next_move()
             
     def draw(self):
         """Draw the combat test screen"""
@@ -4380,6 +4456,18 @@ class CombatTestScreen:
             mp_text = f"MOVEMENT: {self.movement_points_remaining}/{max_mp}"
             mp_surface = self.font_tiny.render(mp_text, True, LCARS_COLORS['green'])
             self.screen.blit(mp_surface, (self.screen_width - 280, 125))
+        
+        # Draw animation indicator if animating
+        if self.is_animating():
+            anim_y = self.screen_height - 170
+            anim_text = "⚡ ANIMATING - Press SPACE or TAB to skip ⚡"
+            # Pulsing color effect
+            pulse = (pygame.time.get_ticks() % 1000) / 1000.0
+            intensity = int(150 + 105 * abs(math.sin(pulse * math.pi)))
+            anim_color = (255, intensity, 0)  # Orange pulse
+            anim_surface = self.font_tiny.render(anim_text, True, anim_color)
+            anim_rect = anim_surface.get_rect(center=(self.screen_width // 2, anim_y))
+            self.screen.blit(anim_surface, anim_rect)
         
         # Draw controls hint - positioned well above combat log
         hint_y = self.screen_height - 145  # Much higher to avoid combat log overlap
@@ -5236,13 +5324,18 @@ class CombatTestScreen:
         if not self.temp_power_allocation:
             return
         
-        available = self.temp_power_allocation['available']
-        if available == 0:
-            available = 1
+        # Calculate total allocated power
+        total_power = (self.temp_power_allocation['engines'] + 
+                      self.temp_power_allocation['shields'] + 
+                      self.temp_power_allocation['weapons'])
         
-        w_ratio = self.temp_power_allocation['weapons'] / available
-        s_ratio = self.temp_power_allocation['shields'] / available
-        e_ratio = self.temp_power_allocation['engines'] / available
+        if total_power == 0:
+            total_power = 1
+        
+        # Calculate ratios (each system's power / total allocated)
+        w_ratio = self.temp_power_allocation['weapons'] / total_power
+        s_ratio = self.temp_power_allocation['shields'] / total_power
+        e_ratio = self.temp_power_allocation['engines'] / total_power
         
         # Barycentric to Cartesian conversion
         control_x = w_ratio * top[0] + s_ratio * bottom_right[0] + e_ratio * bottom_left[0]
@@ -5280,8 +5373,8 @@ class CombatTestScreen:
         self.screen.blit(title, title_rect)
         
         # Draw available power
-        total = self.temp_power_allocation['engines'] + self.temp_power_allocation['shields'] + self.temp_power_allocation['weapons']
-        avail_text = f"ALLOCATED: {total} / {available}"
+        available = self.temp_power_allocation.get('available', 300)
+        avail_text = f"ALLOCATED: {total_power} / {available}"
         avail_surface = self.font_medium.render(avail_text, True, LCARS_COLORS['text_gray'])
         avail_rect = avail_surface.get_rect(center=(center_x, center_y - triangle_size // 2 - 70))
         self.screen.blit(avail_surface, avail_rect)
@@ -5654,10 +5747,11 @@ class CombatTestScreen:
             return
         
         if detail_level == 'basic':
-            # Show totals only
-            damage = data.get('damage_dealt', 0) + data.get('damage_taken', 0)
-            shields = data['shields_lost']
-            hull = data['hull_lost']
+            # Show totals only (rounded up to whole numbers)
+            import math
+            damage = math.ceil(data.get('damage_dealt', 0) + data.get('damage_taken', 0))
+            shields = math.ceil(data['shields_lost'])
+            hull = math.ceil(data['hull_lost'])
             
             text = f"Total Damage: {damage}"
             color = LCARS_COLORS['alert_red'] if damage > 0 else LCARS_COLORS['text_gray']
@@ -5684,10 +5778,11 @@ class CombatTestScreen:
             return
         
         if detail_level == 'medium' or detail_level == 'full':
-            # Show detailed breakdown
-            damage = data.get('damage_dealt', 0) + data.get('damage_taken', 0)
-            shields = data['shields_lost']
-            hull = data['hull_lost']
+            # Show detailed breakdown (rounded up to whole numbers)
+            import math
+            damage = math.ceil(data.get('damage_dealt', 0) + data.get('damage_taken', 0))
+            shields = math.ceil(data['shields_lost'])
+            hull = math.ceil(data['hull_lost'])
             
             # Total damage
             text = f"Total Damage: {damage}"

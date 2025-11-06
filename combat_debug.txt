@@ -1,0 +1,10 @@
+Enemy ships config: [('Yorktown', 1)]
+Processing Yorktown, requesting 1 ships
+Found function_name: create_yorktown_class
+Creating ship 1/1
+Created Yorktown-1 at hex (5, -2), pixel (1478.1281292110202, 431.0)
+
+Total enemy ships created: 1
+Enemy ship names: ['Yorktown-1']
+Total ships in all_ships: 2
+All ship names: ['Enterprise', 'Yorktown-1']

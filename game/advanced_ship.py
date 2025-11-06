@@ -412,14 +412,36 @@ class AdvancedShip:
         """
         Redistribute power between systems (must total to available power)
         Adding power to one system takes it away from the other 2
+        
+        When shield power is reduced, current shields scale down proportionally
+        to prevent exploiting the system (charging shields then moving power away).
         """
         available = self.get_available_power()
         total = engines + shields + weapons
         
         if total <= available:
+            # Calculate old and new shield bonuses to scale current shields
+            old_shield_bonus = self.get_shield_power_bonus()
+            
+            # Update power distribution
             self.power_distribution['engines'] = engines
             self.power_distribution['shields'] = shields
             self.power_distribution['weapons'] = weapons
+            
+            # Calculate new shield bonus
+            new_shield_bonus = self.get_shield_power_bonus()
+            
+            # Scale current shields proportionally if shield power changed
+            if old_shield_bonus != new_shield_bonus and old_shield_bonus > 0:
+                scale_factor = new_shield_bonus / old_shield_bonus
+                
+                # Apply scaling to all shield arcs (current shields only, not max)
+                import math
+                for arc in self.shields:
+                    self.shields[arc] = math.ceil(self.shields[arc] * scale_factor)
+                    # Don't exceed new max shields
+                    self.shields[arc] = min(self.shields[arc], self.get_max_shields_for_arc(arc))
+            
             return True
         return False
     
@@ -429,93 +451,149 @@ class AdvancedShip:
     
     def get_engine_power_bonus(self):
         """
-        Calculate movement bonus from engine power allocation
+        Calculate movement bonus based on engine power allocation (graduated bonus)
         
-        SCALING SYSTEM:
-        - Base: 100 power = 0% bonus (balanced allocation)
-        - Each 10 power above 100 = +5% movement (max +50% at 200 power)
-        - Each 10 power below 100 = -5% movement (min -50% at 0 power)
+        GRADUATED BONUS SYSTEM:
+        - 100 power = 0 bonus (balanced allocation baseline)
+        - 200 power = max bonus (full allocation)
+        - Scales linearly between 100 and 200
         
-        This scales with ship size since all ships allocate from same total pool.
-        A Miranda with 6 MP at 200 power gets 9 MP (+50%)
-        A Yorktown with 5 MP at 200 power gets 7 MP (+50%)
+        Max bonuses by ship size:
+        - Small/Medium/Large ships: 0 → +1 → +2 → +3 (graduated)
+        - Very Large/Huge ships: 0 → +1 → +2 (graduated)
+        
+        Example: Odyssey (Huge) with 5 base MP
+        - 100 power = 5 MP (+0 bonus)
+        - 150 power = 6 MP (+1 bonus, 50% of max)
+        - 200 power = 7 MP (+2 bonus, 100% of max)
+        
+        Example: Miranda (Medium) with 6 base MP
+        - 100 power = 6 MP (+0 bonus)
+        - 133 power = 7 MP (+1 bonus, 33% of max)
+        - 167 power = 8 MP (+2 bonus, 67% of max)
+        - 200 power = 9 MP (+3 bonus, 100% of max)
         
         Returns:
-            float: Multiplier for movement points (0.5 to 1.5)
+            float: Bonus movement points to add (0 to max_bonus)
         """
         engine_power = self.power_distribution['engines']
         
-        # Calculate bonus: (power - 100) / 10 * 0.05
-        # 200 power = (200-100)/10 * 0.05 = 10 * 0.05 = 0.5 = +50%
-        # 100 power = (100-100)/10 * 0.05 = 0 = 0%
-        # 0 power = (0-100)/10 * 0.05 = -10 * 0.05 = -0.5 = -50%
-        bonus_multiplier = 1.0 + ((engine_power - 100) / 10.0 * 0.05)
+        # Determine max bonus based on ship size
+        if self.size in ["Small", "Medium", "Large"]:
+            max_bonus = 3.0
+        elif self.size in ["Very Large", "Huge"]:
+            max_bonus = 2.0
+        else:
+            max_bonus = 0.0
         
-        # Clamp between 0.5 and 1.5
-        return max(0.5, min(1.5, bonus_multiplier))
+        # Graduated scaling from 100 (0 bonus) to 200 (max bonus)
+        if engine_power <= 100:
+            return 0.0
+        
+        power_above_balanced = engine_power - 100
+        percentage = power_above_balanced / 100.0  # 0.0 to 1.0
+        
+        return max_bonus * percentage
     
     def get_shield_power_bonus(self):
         """
-        Calculate shield regeneration bonus from shield power allocation
+        Calculate shield bonus based on shield power allocation (sliding scale)
         
-        SCALING SYSTEM:
-        - Base: 100 power = 1.0x regen (balanced)
-        - Each 10 power above 100 = +10% regen (max +100% at 200 power)
-        - Each 10 power below 100 = -10% regen (min 0% at 0 power)
+        SLIDING SCALE SYSTEM:
+        - 0 power = 1.0x shields (no allocation)
+        - 100 power = 1.0x shields (balanced allocation)
+        - 200 power = 1.5x shields (full allocation, +50% max)
         
-        This affects shield regeneration rate, NOT shield capacity.
-        More power = faster shield recovery between rounds.
+        This affects both shield capacity and regeneration rate.
+        When power is reduced, current shields scale down proportionally.
+        
+        Example: Ship with 1000 base max shields
+        - 0 power = 1000 shields (1.0x, 0% bonus)
+        - 100 power = 1000 shields (1.0x, 0% bonus, balanced)
+        - 150 power = 1250 shields (1.25x, 50% of max bonus)
+        - 200 power = 1500 shields (1.5x, 100% of max bonus)
         
         Returns:
-            float: Multiplier for shield regeneration (0.0 to 2.0)
+            float: Multiplier for shields (1.0 to 1.5)
         """
         shield_power = self.power_distribution['shields']
         
-        # Calculate bonus: (power - 100) / 10 * 0.10
-        # 200 power = (200-100)/10 * 0.10 = 10 * 0.10 = 1.0 = +100%
-        # 100 power = (100-100)/10 * 0.10 = 0 = 0%
-        # 0 power = (0-100)/10 * 0.10 = -10 * 0.10 = -1.0 = -100%
-        bonus_multiplier = 1.0 + ((shield_power - 100) / 10.0 * 0.10)
+        # Calculate percentage above balanced (100 power)
+        # 100 power = 0% → 1.0x (no bonus)
+        # 150 power = 50% → 1.25x (half bonus)
+        # 200 power = 100% → 1.5x (full bonus)
+        if shield_power <= 100:
+            return 1.0
         
-        # Clamp between 0.0 and 2.0
-        return max(0.0, min(2.0, bonus_multiplier))
+        power_above_balanced = shield_power - 100
+        percentage = power_above_balanced / 100.0  # 0.0 to 1.0
+        
+        # Max bonus is +50% (1.0 baseline + 0.5 max bonus)
+        return 1.0 + (0.5 * percentage)
     
     def get_weapon_power_bonus(self):
         """
-        Calculate weapon damage bonus from weapon power allocation
+        Calculate weapon damage bonus based on weapon power allocation (sliding scale)
         
-        SCALING SYSTEM:
-        - Base: 100 power = 1.0x damage (balanced)
-        - Each 10 power above 100 = +5% damage (max +50% at 200 power)
-        - Each 10 power below 100 = -5% damage (min 50% at 0 power)
+        SLIDING SCALE SYSTEM (ARRAYS ONLY, not torpedoes):
+        - 0 power = 1.0x damage (no allocation)
+        - 100 power = 1.0x damage (balanced allocation)
+        - 200 power = 1.5x damage (full allocation, +50% max)
         
-        This prevents one-shotting by capping at +50% damage.
-        A Yorktown doing 100 damage at 200 power does 150 damage.
-        A Miranda doing 30 damage at 200 power does 45 damage.
-        Both get same % increase, maintaining balance.
+        This prevents one-shotting while making arrays more effective.
+        Torpedoes remain high-risk/high-reward (unaffected by power).
+        
+        Example: Yorktown phaser doing 35 base damage
+        - 0 power = 35 damage (1.0x, 0% bonus)
+        - 100 power = 35 damage (1.0x, 0% bonus, balanced)
+        - 150 power = 43.75 damage (1.25x, 50% of max bonus)
+        - 200 power = 52.5 damage (1.5x, 100% of max bonus)
+        - Photon torpedo: ALWAYS full damage (not affected)
         
         Returns:
-            float: Multiplier for weapon damage (0.5 to 1.5)
+            float: Multiplier for array damage (1.0 to 1.5)
         """
         weapon_power = self.power_distribution['weapons']
         
-        # Calculate bonus: (power - 100) / 10 * 0.05
-        # Same as engines - conservative scaling to prevent one-shots
-        bonus_multiplier = 1.0 + ((weapon_power - 100) / 10.0 * 0.05)
+        # Calculate percentage above balanced (100 power)
+        # 100 power = 0% → 1.0x (no bonus)
+        # 150 power = 50% → 1.25x (half bonus)
+        # 200 power = 100% → 1.5x (full bonus)
+        if weapon_power <= 100:
+            return 1.0
         
-        # Clamp between 0.5 and 1.5
-        return max(0.5, min(1.5, bonus_multiplier))
+        power_above_balanced = weapon_power - 100
+        percentage = power_above_balanced / 100.0  # 0.0 to 1.0
+        
+        # Max bonus is +50% (1.0 baseline + 0.5 max bonus)
+        return 1.0 + (0.5 * percentage)
     
     def get_current_movement_points(self):
         """
         Calculate actual movement points with power bonus applied
         
         Returns:
-            int: Movement points for this turn (base * power bonus)
+            int: Movement points for this turn (base + power bonus, rounded up)
         """
+        import math
         base_mp = self.impulse_speed
-        power_bonus = self.get_engine_power_bonus()
-        return int(base_mp * power_bonus)
+        bonus_mp = self.get_engine_power_bonus()
+        return math.ceil(base_mp + bonus_mp)
+    
+    def get_max_shields_for_arc(self, arc):
+        """
+        Calculate max shields for an arc with power bonus applied
+        
+        Args:
+            arc: Shield arc ('fore', 'aft', 'port', 'starboard')
+        
+        Returns:
+            int: Max shield value for this arc with power bonus (rounded up)
+        """
+        import math
+        base_max = self.max_shields[arc]
+        shield_bonus = self.get_shield_power_bonus()
+        return math.ceil(base_max * shield_bonus)
     
     # ═══════════════════════════════════════════════════════════════════
     # DAMAGE & COMBAT
@@ -549,12 +627,15 @@ class AdvancedShip:
             else:
                 # Shields down, full torpedo damage to hull (reduced by armor)
                 hull_damage = damage * (1.0 - self.armor / 100.0)
+            
+            # Ensure hull damage is never negative
+            hull_damage = max(0, hull_damage)
         else:
             # Energy weapons: shields block all until depleted
             if self.shields[arc] > 0:
                 shield_damage = min(damage, self.shields[arc])
                 self.shields[arc] -= shield_damage
-                remaining_damage = damage - shield_damage
+                remaining_damage = max(0, damage - shield_damage)  # Ensure non-negative
             else:
                 remaining_damage = damage
             
@@ -564,6 +645,9 @@ class AdvancedShip:
                 hull_damage = remaining_damage * (1.0 - armor_reduction)
             else:
                 hull_damage = 0
+            
+            # Ensure hull damage is never negative
+            hull_damage = max(0, hull_damage)
         
         # Apply hull damage
         if hull_damage > 0:
@@ -589,6 +673,12 @@ class AdvancedShip:
             logger = get_logger(__name__)
             logger.warning(f"{self.name}: HULL INTEGRITY FAILURE - Ship disabled!")
             
+            # Catastrophic hull failure causes massive casualties (50% base)
+            hull_failure_casualties = self.calculate_hull_failure_casualties()
+            total_casualties = casualties + hull_failure_casualties
+            
+            logger.warning(f"{self.name}: Hull failure casualties: {hull_failure_casualties} crew lost")
+            
             # Hull at 0 = disabled but not destroyed (unless warp core breaches)
             breach_result = self.check_warp_core_breach()
             
@@ -598,7 +688,7 @@ class AdvancedShip:
                 'warp_core_breach': breach_result['breach'],
                 'breach_survived': breach_result['survived'],
                 'hull_damage': hull_damage,
-                'casualties': casualties + breach_result['casualties'],
+                'casualties': total_casualties + breach_result['casualties'],
                 'system_damage': damaged_systems
             }
         
@@ -650,6 +740,46 @@ class AdvancedShip:
         
         casualties = int(self.max_crew * casualty_rate)
         return max(0, casualties)
+    
+    def calculate_hull_failure_casualties(self):
+        """
+        Calculate crew casualties when hull reaches 0%
+        Catastrophic structural failure - ship disabled but salvageable
+        Base 50% casualty rate, mitigated by systems and crew
+        """
+        import math
+        
+        # Base catastrophic casualty rate: 50% of crew
+        base_casualty_rate = 0.50
+        
+        # Mitigate with life support - keeps crew areas pressurized
+        life_support_efficiency = self.get_system_efficiency('life_support')
+        casualty_rate = base_casualty_rate * (1.0 - life_support_efficiency * 0.4)  # Up to 40% reduction
+        
+        # Mitigate with sick bay - treat injured crew
+        sick_bay_efficiency = self.get_system_efficiency('sick_bay')
+        casualty_rate *= (1.0 - sick_bay_efficiency * 0.3)  # Up to 30% reduction
+        
+        # Mitigate with medical officer skill
+        if self.command_crew['medical']:
+            medical_bonus = self.command_crew['medical'].get_skill_bonus()
+            casualty_rate *= (1.0 - medical_bonus * 0.2)  # Up to 20% reduction
+        
+        # Calculate final casualties
+        casualties = math.ceil(self.crew_count * casualty_rate)
+        
+        from .logger import get_logger
+        logger = get_logger(__name__)
+        logger.info(f"{self.name}: Hull failure casualty calculation:")
+        logger.info(f"  Base rate: {base_casualty_rate*100:.1f}%")
+        logger.info(f"  Life support mitigation: {life_support_efficiency*100:.1f}%")
+        logger.info(f"  Sick bay mitigation: {sick_bay_efficiency*100:.1f}%")
+        if self.command_crew['medical']:
+            logger.info(f"  Medical officer bonus: {medical_bonus*100:.1f}%")
+        logger.info(f"  Final rate: {casualty_rate*100:.1f}%")
+        logger.info(f"  Casualties: {casualties} of {self.crew_count} crew")
+        
+        return max(0, min(casualties, self.crew_count))  # Can't exceed crew count
     
     def apply_system_damage(self, hull_damage):
         """
@@ -777,50 +907,52 @@ class AdvancedShip:
         """
         Check if warp core breach occurs when warp core reaches 0%
         
-        Warp Core Breach = CATASTROPHIC EXPLOSION
-        - Ship completely destroyed (no salvage)
-        - Massive explosion damages nearby ships
-        - Very low survival chance for crew/player
-        - Engineer skill can improve survival odds slightly
+        Warp Core Breach = GUARANTEED SHIP DESTRUCTION
+        - Warp core at 0% = immediate catastrophic breach
+        - Ship ALWAYS completely destroyed (no salvage, total loss)
+        - Small chance crew can evacuate to escape pods before explosion
+        - Engineer skill can slightly improve crew evacuation odds
         
         Hull reaching 0 = Ship disabled but intact (can be salvaged/repaired at starbase)
-        Warp core reaching 0 = BIG BOOM
+        Warp core reaching 0 = Ship lost forever, crew evacuation possible
         
         Returns:
-            dict with breach status and survival chance
+            dict with breach status and crew survival result
         """
         from .logger import get_logger
         logger = get_logger(__name__)
         
         if self.systems['warp_core'] <= 0:
-            logger.critical(f"{self.name}: WARP CORE BREACH!")
+            logger.critical(f"{self.name}: *** CATASTROPHIC WARP CORE BREACH ***")
             
-            # Base survival chance is very low (10%)
+            # Base crew evacuation chance is very low (10%)
             base_survival = 0.10
             
-            # Engineer can improve odds slightly
+            # Engineer can improve evacuation odds slightly
             if self.command_crew['engineer']:
                 engineer_bonus = self.command_crew['engineer'].get_skill_bonus()
-                # Engineer adds up to 20% survival chance (max 30% total)
+                # Engineer adds up to 20% evacuation chance (max 30% total)
                 survival_chance = min(0.30, base_survival + (engineer_bonus * 0.20))
-                logger.info(f"Engineer {self.command_crew['engineer'].name} attempting emergency protocols...")
+                logger.info(f"Engineer {self.command_crew['engineer'].name} attempting emergency evacuation...")
             else:
                 survival_chance = base_survival
             
-            # Roll for survival
-            survived = game_rng.roll_critical(survival_chance)
+            # Roll for crew evacuation
+            crew_evacuated = game_rng.roll_critical(survival_chance)
             
-            if survived:
-                logger.warning(f"{self.name}: Crew evacuated before breach! {int(survival_chance * 100)}% survived!")
+            if crew_evacuated:
+                logger.warning(f"{self.name}: SHIP DESTROYED - Crew evacuated to escape pods! ({int(survival_chance * 100)}% made it out)")
+                casualties = 0  # Crew survived
             else:
-                logger.critical(f"{self.name}: WARP CORE BREACH - TOTAL LOSS OF SHIP AND CREW!")
+                logger.critical(f"{self.name}: SHIP DESTROYED - All hands lost with the ship!")
+                casualties = self.crew_count  # Total crew loss
             
             return {
                 'breach': True,
-                'survived': survived,
+                'survived': crew_evacuated,  # Did crew escape?
                 'survival_chance': survival_chance,
-                'casualties': 0 if survived else self.crew_count,
-                'ship_destroyed': True
+                'casualties': casualties,
+                'ship_destroyed': True  # Ship ALWAYS destroyed
             }
         
         return {
@@ -877,18 +1009,21 @@ class AdvancedShip:
         """
         Regenerate shields based on power allocation and system health
         
-        Power bonus affects regeneration rate, not shield capacity.
-        This allows tactical decisions: high shield power for fast recovery,
+        Power bonus affects both regeneration rate AND shield capacity.
+        This allows tactical decisions: high shield power for tankiness,
         or low shield power for offensive/speed builds.
         """
+        import math
         shield_efficiency = self.get_system_efficiency('shields')
-        shield_power_bonus = self.get_shield_power_bonus()  # New: proper scaling
+        shield_power_bonus = self.get_shield_power_bonus()
         
         regen_rate = amount_per_arc * shield_efficiency * shield_power_bonus
         
         for arc in self.shields:
-            self.shields[arc] = min(self.max_shields[arc], 
-                                   self.shields[arc] + regen_rate)
+            # Use power-modified max shields
+            max_for_arc = self.get_max_shields_for_arc(arc)
+            new_shield_value = self.shields[arc] + regen_rate
+            self.shields[arc] = min(max_for_arc, math.ceil(new_shield_value))
     
     # ═══════════════════════════════════════════════════════════════════
     # WEAPONS
@@ -924,10 +1059,12 @@ class AdvancedShip:
                 hit_chance = 0.85 * sensors_efficiency * (1.0 + tactical_bonus * 0.3)
                 
                 if game_rng.roll_hit(hit_chance):
-                    # Calculate damage with proper power scaling
+                    # Calculate damage with proper power scaling (rounded up)
+                    import math
                     base_damage = weapon.base_damage
                     damage = base_damage * weapons_efficiency * weapon_power_bonus
                     damage *= (1.0 + crew_bonus + tactical_bonus * 0.5)
+                    damage = math.ceil(damage)
                     
                     damage_dealt.append({
                         'type': 'energy',
@@ -935,15 +1072,17 @@ class AdvancedShip:
                         'damage': damage
                     })
         
-        # Fire torpedoes
+        # Fire torpedoes (NOTE: weapon_power_bonus NOT applied - torpedoes always full damage)
         for torp_bay in self.torpedo_bays:
             if arc in torp_bay.firing_arcs and torp_bay.torpedoes > 0:
                 hit_chance = 0.75 * sensors_efficiency * (1.0 + tactical_bonus * 0.3)
                 
                 if game_rng.roll_hit(hit_chance):
+                    import math
                     base_damage = torp_bay.base_damage
                     damage = base_damage * weapons_efficiency
                     damage *= (1.0 + tactical_bonus * 0.5)
+                    damage = math.ceil(damage)
                     
                     torp_bay.torpedoes -= 1
                     

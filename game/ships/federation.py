@@ -99,11 +99,6 @@ def create_galaxy_class(name, registry):
     
     # Power
     ship.warp_core_max_power = 500
-    ship.power_distribution = {
-        'engines': 166,
-        'shields': 167,
-        'weapons': 167
-    }
     
     # Starter Weapons (Mk XII equipment)
     # Mk XII Phasers: 15 base + (12-1)*5 = 70 damage
@@ -155,7 +150,6 @@ def create_daedalus_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 210
-    ship.power_distribution = {'engines': 70, 'shields': 70, 'weapons': 70}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=1, firing_arcs=['fore'], upgrade_space_cost=5),
@@ -191,7 +185,6 @@ def create_oberth_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 240
-    ship.power_distribution = {'engines': 80, 'shields': 80, 'weapons': 80}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=2, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5)
@@ -224,7 +217,6 @@ def create_sydney_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 255
-    ship.power_distribution = {'engines': 85, 'shields': 85, 'weapons': 85}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=2, firing_arcs=['fore'], upgrade_space_cost=5),
@@ -262,7 +254,6 @@ def create_ptolemy_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 330
-    ship.power_distribution = {'engines': 110, 'shields': 110, 'weapons': 110}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=2, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5)
@@ -295,7 +286,6 @@ def create_soyuz_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 285
-    ship.power_distribution = {'engines': 95, 'shields': 95, 'weapons': 95}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=3, firing_arcs=['fore', 'port'], upgrade_space_cost=5),
@@ -332,7 +322,6 @@ def create_constitution_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 360
-    ship.power_distribution = {'engines': 120, 'shields': 120, 'weapons': 120}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -375,7 +364,6 @@ def create_hermes_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 270
-    ship.power_distribution = {'engines': 90, 'shields': 90, 'weapons': 90}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=3, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -411,7 +399,6 @@ def create_saladin_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
-    ship.power_distribution = {'engines': 100, 'shields': 100, 'weapons': 100}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -447,7 +434,6 @@ def create_constellation_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 375
-    ship.power_distribution = {'engines': 125, 'shields': 125, 'weapons': 125}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port'], upgrade_space_cost=5),
@@ -486,7 +472,6 @@ def create_antares_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
-    ship.power_distribution = {'engines': 100, 'shields': 100, 'weapons': 100}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=2, firing_arcs=['fore'], upgrade_space_cost=5),
@@ -524,7 +509,6 @@ def create_constitution_refit_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 390
-    ship.power_distribution = {'engines': 130, 'shields': 130, 'weapons': 130}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=7, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -563,7 +547,6 @@ def create_excelsior_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
-    ship.power_distribution = {'engines': 140, 'shields': 140, 'weapons': 140}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=7, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -602,7 +585,6 @@ def create_ambassador_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
-    ship.power_distribution = {'engines': 150, 'shields': 150, 'weapons': 150}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -641,7 +623,6 @@ def create_springfield_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 315
-    ship.power_distribution = {'engines': 105, 'shields': 105, 'weapons': 105}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port'], upgrade_space_cost=5),
@@ -678,7 +659,6 @@ def create_cheyenne_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 360
-    ship.power_distribution = {'engines': 120, 'shields': 120, 'weapons': 120}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=7, firing_arcs=['fore', 'port'], upgrade_space_cost=5),
@@ -716,7 +696,6 @@ def create_challenger_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 375
-    ship.power_distribution = {'engines': 125, 'shields': 125, 'weapons': 125}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -752,7 +731,6 @@ def create_new_orleans_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 345
-    ship.power_distribution = {'engines': 115, 'shields': 115, 'weapons': 115}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=7, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -788,7 +766,6 @@ def create_freedom_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
-    ship.power_distribution = {'engines': 100, 'shields': 100, 'weapons': 100}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -824,7 +801,6 @@ def create_nova_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
-    ship.power_distribution = {'engines': 100, 'shields': 100, 'weapons': 100}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=4, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -864,7 +840,6 @@ def create_niagara_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 390
-    ship.power_distribution = {'engines': 130, 'shields': 130, 'weapons': 130}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -901,7 +876,6 @@ def create_olympic_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 360
-    ship.power_distribution = {'engines': 120, 'shields': 120, 'weapons': 120}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=1, firing_arcs=['fore'], upgrade_space_cost=5),
@@ -938,7 +912,6 @@ def create_yeager_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 315
-    ship.power_distribution = {'engines': 105, 'shields': 105, 'weapons': 105}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=7, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -974,7 +947,6 @@ def create_saber_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
-    ship.power_distribution = {'engines': 100, 'shields': 100, 'weapons': 100}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1010,7 +982,6 @@ def create_bradbury_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 330
-    ship.power_distribution = {'engines': 110, 'shields': 110, 'weapons': 110}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=4, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1046,7 +1017,6 @@ def create_renaissance_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 405
-    ship.power_distribution = {'engines': 135, 'shields': 135, 'weapons': 135}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1082,7 +1052,6 @@ def create_steamrunner_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 330
-    ship.power_distribution = {'engines': 110, 'shields': 110, 'weapons': 110}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1119,7 +1088,6 @@ def create_norway_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 345
-    ship.power_distribution = {'engines': 115, 'shields': 115, 'weapons': 115}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1155,7 +1123,6 @@ def create_nebula_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 480
-    ship.power_distribution = {'engines': 160, 'shields': 160, 'weapons': 160}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=7, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1193,7 +1160,6 @@ def create_centaur_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 345
-    ship.power_distribution = {'engines': 115, 'shields': 115, 'weapons': 115}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1229,7 +1195,6 @@ def create_intrepid_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 360
-    ship.power_distribution = {'engines': 120, 'shields': 120, 'weapons': 120}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=5, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1265,7 +1230,6 @@ def create_akira_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
-    ship.power_distribution = {'engines': 140, 'shields': 140, 'weapons': 140}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1306,7 +1270,6 @@ def create_curry_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 375
-    ship.power_distribution = {'engines': 125, 'shields': 125, 'weapons': 125}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1342,7 +1305,6 @@ def create_aquarius_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 270
-    ship.power_distribution = {'engines': 90, 'shields': 90, 'weapons': 90}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1378,7 +1340,6 @@ def create_defiant_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 300
-    ship.power_distribution = {'engines': 100, 'shields': 100, 'weapons': 100}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore'], upgrade_space_cost=5),
@@ -1416,7 +1377,6 @@ def create_california_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 375
-    ship.power_distribution = {'engines': 125, 'shields': 125, 'weapons': 125}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1455,7 +1415,6 @@ def create_parliament_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 390
-    ship.power_distribution = {'engines': 130, 'shields': 130, 'weapons': 130}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1495,7 +1454,6 @@ def create_reliant_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 405
-    ship.power_distribution = {'engines': 135, 'shields': 135, 'weapons': 135}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1531,7 +1489,6 @@ def create_ross_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
-    ship.power_distribution = {'engines': 140, 'shields': 140, 'weapons': 140}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=9, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1567,7 +1524,6 @@ def create_inquiry_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 435
-    ship.power_distribution = {'engines': 145, 'shields': 145, 'weapons': 145}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1604,7 +1560,6 @@ def create_sutherland_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
-    ship.power_distribution = {'engines': 150, 'shields': 150, 'weapons': 150}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1641,7 +1596,6 @@ def create_sovereign_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 510
-    ship.power_distribution = {'engines': 170, 'shields': 170, 'weapons': 170}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=11, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1679,7 +1633,6 @@ def create_obena_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
-    ship.power_distribution = {'engines': 150, 'shields': 150, 'weapons': 150}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1715,7 +1668,6 @@ def create_dauntless_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 405
-    ship.power_distribution = {'engines': 135, 'shields': 135, 'weapons': 135}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1751,7 +1703,6 @@ def create_prometheus_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
-    ship.power_distribution = {'engines': 150, 'shields': 150, 'weapons': 150}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=12, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1792,7 +1743,6 @@ def create_protostar_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
-    ship.power_distribution = {'engines': 140, 'shields': 140, 'weapons': 140}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1832,7 +1782,6 @@ def create_luna_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
-    ship.power_distribution = {'engines': 140, 'shields': 140, 'weapons': 140}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1868,7 +1817,6 @@ def create_pathfinder_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 390
-    ship.power_distribution = {'engines': 130, 'shields': 130, 'weapons': 130}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1904,7 +1852,6 @@ def create_jein_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 450
-    ship.power_distribution = {'engines': 150, 'shields': 150, 'weapons': 150}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=9, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1940,7 +1887,6 @@ def create_shepard_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 480
-    ship.power_distribution = {'engines': 160, 'shields': 160, 'weapons': 160}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -1977,7 +1923,6 @@ def create_duderstadt_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 420
-    ship.power_distribution = {'engines': 140, 'shields': 140, 'weapons': 140}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=6, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2013,7 +1958,6 @@ def create_gagarin_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 495
-    ship.power_distribution = {'engines': 165, 'shields': 165, 'weapons': 165}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2050,7 +1994,6 @@ def create_excelsior_ii_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 495
-    ship.power_distribution = {'engines': 165, 'shields': 165, 'weapons': 165}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2087,7 +2030,6 @@ def create_alita_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 435
-    ship.power_distribution = {'engines': 145, 'shields': 145, 'weapons': 145}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2124,7 +2066,6 @@ def create_echelon_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 495
-    ship.power_distribution = {'engines': 165, 'shields': 165, 'weapons': 165}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2160,7 +2101,6 @@ def create_edison_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 465
-    ship.power_distribution = {'engines': 155, 'shields': 155, 'weapons': 155}
     
     ship.weapon_arrays = [
         WeaponArray('antiproton', mark=11, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2196,7 +2136,6 @@ def create_sagan_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 465
-    ship.power_distribution = {'engines': 155, 'shields': 155, 'weapons': 155}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2232,7 +2171,6 @@ def create_constitution_iii_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 480
-    ship.power_distribution = {'engines': 160, 'shields': 160, 'weapons': 160}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=9, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2269,7 +2207,6 @@ def create_vesta_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 480
-    ship.power_distribution = {'engines': 160, 'shields': 160, 'weapons': 160}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=8, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2312,7 +2249,6 @@ def create_curiosity_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 510
-    ship.power_distribution = {'engines': 170, 'shields': 170, 'weapons': 170}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=10, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2348,7 +2284,6 @@ def create_venture_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 570
-    ship.power_distribution = {'engines': 190, 'shields': 190, 'weapons': 190}
     
     ship.weapon_arrays = [
         WeaponArray('phaser', mark=12, firing_arcs=['fore', 'port', 'starboard'], upgrade_space_cost=5),
@@ -2387,7 +2322,6 @@ def create_odyssey_class(name, registry):
     ship.max_shields = ship.shields.copy()
     
     ship.warp_core_max_power = 600
-    ship.power_distribution = {'engines': 200, 'shields': 200, 'weapons': 200}
     
     # 18 Phaser Arrays (cannon loadout) - Forward-heavy configuration
     ship.weapon_arrays = [
@@ -2470,7 +2404,6 @@ def create_yorktown_class(name, registry):
     
     # Power - Mark XV Warp Core
     ship.warp_core_max_power = 600
-    ship.power_distribution = {'engines': 200, 'shields': 200, 'weapons': 200}
     
     # Weapons - 22 Mark XV Phaser Arrays (front-heavy dreadnought configuration)
     # Mk XV Phasers: 15 + (15-1)*5 = 85 damage per array
