@@ -423,6 +423,100 @@ class AdvancedShip:
             return True
         return False
     
+    # ========================================================================
+    # POWER MANAGEMENT - SCALING BONUSES
+    # ========================================================================
+    
+    def get_engine_power_bonus(self):
+        """
+        Calculate movement bonus from engine power allocation
+        
+        SCALING SYSTEM:
+        - Base: 100 power = 0% bonus (balanced allocation)
+        - Each 10 power above 100 = +5% movement (max +50% at 200 power)
+        - Each 10 power below 100 = -5% movement (min -50% at 0 power)
+        
+        This scales with ship size since all ships allocate from same total pool.
+        A Miranda with 6 MP at 200 power gets 9 MP (+50%)
+        A Yorktown with 5 MP at 200 power gets 7 MP (+50%)
+        
+        Returns:
+            float: Multiplier for movement points (0.5 to 1.5)
+        """
+        engine_power = self.power_distribution['engines']
+        
+        # Calculate bonus: (power - 100) / 10 * 0.05
+        # 200 power = (200-100)/10 * 0.05 = 10 * 0.05 = 0.5 = +50%
+        # 100 power = (100-100)/10 * 0.05 = 0 = 0%
+        # 0 power = (0-100)/10 * 0.05 = -10 * 0.05 = -0.5 = -50%
+        bonus_multiplier = 1.0 + ((engine_power - 100) / 10.0 * 0.05)
+        
+        # Clamp between 0.5 and 1.5
+        return max(0.5, min(1.5, bonus_multiplier))
+    
+    def get_shield_power_bonus(self):
+        """
+        Calculate shield regeneration bonus from shield power allocation
+        
+        SCALING SYSTEM:
+        - Base: 100 power = 1.0x regen (balanced)
+        - Each 10 power above 100 = +10% regen (max +100% at 200 power)
+        - Each 10 power below 100 = -10% regen (min 0% at 0 power)
+        
+        This affects shield regeneration rate, NOT shield capacity.
+        More power = faster shield recovery between rounds.
+        
+        Returns:
+            float: Multiplier for shield regeneration (0.0 to 2.0)
+        """
+        shield_power = self.power_distribution['shields']
+        
+        # Calculate bonus: (power - 100) / 10 * 0.10
+        # 200 power = (200-100)/10 * 0.10 = 10 * 0.10 = 1.0 = +100%
+        # 100 power = (100-100)/10 * 0.10 = 0 = 0%
+        # 0 power = (0-100)/10 * 0.10 = -10 * 0.10 = -1.0 = -100%
+        bonus_multiplier = 1.0 + ((shield_power - 100) / 10.0 * 0.10)
+        
+        # Clamp between 0.0 and 2.0
+        return max(0.0, min(2.0, bonus_multiplier))
+    
+    def get_weapon_power_bonus(self):
+        """
+        Calculate weapon damage bonus from weapon power allocation
+        
+        SCALING SYSTEM:
+        - Base: 100 power = 1.0x damage (balanced)
+        - Each 10 power above 100 = +5% damage (max +50% at 200 power)
+        - Each 10 power below 100 = -5% damage (min 50% at 0 power)
+        
+        This prevents one-shotting by capping at +50% damage.
+        A Yorktown doing 100 damage at 200 power does 150 damage.
+        A Miranda doing 30 damage at 200 power does 45 damage.
+        Both get same % increase, maintaining balance.
+        
+        Returns:
+            float: Multiplier for weapon damage (0.5 to 1.5)
+        """
+        weapon_power = self.power_distribution['weapons']
+        
+        # Calculate bonus: (power - 100) / 10 * 0.05
+        # Same as engines - conservative scaling to prevent one-shots
+        bonus_multiplier = 1.0 + ((weapon_power - 100) / 10.0 * 0.05)
+        
+        # Clamp between 0.5 and 1.5
+        return max(0.5, min(1.5, bonus_multiplier))
+    
+    def get_current_movement_points(self):
+        """
+        Calculate actual movement points with power bonus applied
+        
+        Returns:
+            int: Movement points for this turn (base * power bonus)
+        """
+        base_mp = self.impulse_speed
+        power_bonus = self.get_engine_power_bonus()
+        return int(base_mp * power_bonus)
+    
     # ═══════════════════════════════════════════════════════════════════
     # DAMAGE & COMBAT
     # ═══════════════════════════════════════════════════════════════════
@@ -780,11 +874,17 @@ class AdvancedShip:
         return 100
     
     def regenerate_shields(self, amount_per_arc):
-        """Regenerate shields based on power and system health"""
-        shield_efficiency = self.get_system_efficiency('shields')
-        shield_power = self.power_distribution['shields'] / 100.0
+        """
+        Regenerate shields based on power allocation and system health
         
-        regen_rate = amount_per_arc * shield_efficiency * shield_power
+        Power bonus affects regeneration rate, not shield capacity.
+        This allows tactical decisions: high shield power for fast recovery,
+        or low shield power for offensive/speed builds.
+        """
+        shield_efficiency = self.get_system_efficiency('shields')
+        shield_power_bonus = self.get_shield_power_bonus()  # New: proper scaling
+        
+        regen_rate = amount_per_arc * shield_efficiency * shield_power_bonus
         
         for arc in self.shields:
             self.shields[arc] = min(self.max_shields[arc], 
@@ -807,7 +907,7 @@ class AdvancedShip:
         """
         weapons_efficiency = self.get_system_efficiency('weapons')
         sensors_efficiency = self.get_system_efficiency('sensors')
-        weapon_power = self.power_distribution['weapons'] / 100.0
+        weapon_power_bonus = self.get_weapon_power_bonus()  # New: proper scaling
         crew_bonus = self.get_crew_bonus()
         
         # Tactical officer bonus
@@ -824,9 +924,9 @@ class AdvancedShip:
                 hit_chance = 0.85 * sensors_efficiency * (1.0 + tactical_bonus * 0.3)
                 
                 if game_rng.roll_hit(hit_chance):
-                    # Calculate damage
+                    # Calculate damage with proper power scaling
                     base_damage = weapon.base_damage
-                    damage = base_damage * weapons_efficiency * weapon_power
+                    damage = base_damage * weapons_efficiency * weapon_power_bonus
                     damage *= (1.0 + crew_bonus + tactical_bonus * 0.5)
                     
                     damage_dealt.append({

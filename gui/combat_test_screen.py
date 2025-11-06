@@ -1900,13 +1900,26 @@ class CombatTestScreen:
     # ═══════════════════════════════════════════════════════════════════
     
     def start_movement_phase(self, ship):
-        """Initialize movement points for a ship"""
-        # Get impulse speed (movement points available)
-        self.movement_points_remaining = ship.impulse_speed
+        """
+        Initialize movement points for a ship
+        
+        Movement points are calculated based on:
+        - Base impulse speed (ship stat)
+        - Engine power allocation bonus (scales with power level)
+        """
+        # Get actual movement points with power bonus applied
+        self.movement_points_remaining = ship.get_current_movement_points()
         self.movement_points_used = 0
         self.has_moved_this_turn = False
         self.turns_this_activation = 0
-        self.add_to_log(f"{ship.name}: {self.movement_points_remaining} movement points")
+        
+        # Log with power bonus indicator if not at 100 power
+        engine_power = ship.power_distribution['engines']
+        if engine_power != 100:
+            power_bonus = ship.get_engine_power_bonus()
+            self.add_to_log(f"{ship.name}: {self.movement_points_remaining} movement points (base {ship.impulse_speed} × {power_bonus:.2f})")
+        else:
+            self.add_to_log(f"{ship.name}: {self.movement_points_remaining} movement points")
         
         # If this is AI ship, execute AI movement
         if ship != self.player_ship:
@@ -4361,9 +4374,10 @@ class CombatTestScreen:
         phase_surface = self.font_tiny.render(phase_text, True, phase_color)
         self.screen.blit(phase_surface, (self.screen_width - 280, 105))
         
-        # Draw movement points if in movement phase
+        # Draw movement points if in movement phase (show max with power bonus)
         if self.combat_phase == "movement" and current_ship == self.player_ship:
-            mp_text = f"MOVEMENT: {self.movement_points_remaining}/{self.player_ship.impulse_speed}"
+            max_mp = self.player_ship.get_current_movement_points()
+            mp_text = f"MOVEMENT: {self.movement_points_remaining}/{max_mp}"
             mp_surface = self.font_tiny.render(mp_text, True, LCARS_COLORS['green'])
             self.screen.blit(mp_surface, (self.screen_width - 280, 125))
         
