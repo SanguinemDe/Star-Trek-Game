@@ -15,8 +15,181 @@ Combat ready - press SPACE to fire, ENTER to advance
 ============================================================
 INITIATIVE PHASE - Rolling for turn order
 ============================================================
-Enterprise: Base 75 + Roll 85 = 160
-Yorktown-1: Base 0 + Roll 58 = 58
+Enterprise: Base 75 + Roll 97 = 172
+Yorktown-1: Base 0 + Roll 65 = 65
+Turn order: Enterprise > Yorktown-1
+
+============================================================
+PHASE CHANGE: INITIATIVE → MOVEMENT
+============================================================
+Enterprise: 5 movement points
+DEBUG: Enterprise wants to move FWD from (-5,0) to (-4,0)
+>>> All hexes clear, proceeding with movement
+Moved forward (4 pts left)
+Turned left (3 pts left)
+DEBUG: Enterprise wants to move FWD from (-4,0) to (-3,-1)
+>>> All hexes clear, proceeding with movement
+Moved forward (2 pts left)
+DEBUG: Enterprise wants to move FWD from (-3,-1) to (-2,-2)
+>>> All hexes clear, proceeding with movement
+Moved forward (1 pts left)
+Turned right (0 pts left)
+No movement points left!
+DEBUG: Enterprise completed action in movement phase
+DEBUG: Next ship is Yorktown-1
+Yorktown-1: 5 movement points
+DEBUG: Yorktown-1 starting at (5,-2) facing 3
+DEBUG: All ship positions:
+  Enterprise: (-2,-2)
+  Yorktown-1: (5,-2)
+DEBUG: Asking AI to decide movement with 5 MP
+DEBUG: AI settings - preferred_range:6, aggressive:True, evasion:0.5
+DEBUG: Distance to target: 7, Target in arc: fore
+DEBUG: AI decided on 5 moves: ['forward', 'turn_left', 'forward', 'turn_right', 'forward']
+DEBUG: Yorktown-1 executing move 1/5: forward
+DEBUG:   Before: (5,-2) facing 3
+DEBUG: Yorktown-1 wants to move FWD from (5,-2) to (4,-2)
+>>> All hexes clear, proceeding with movement
+Moved forward (4 pts left)
+DEBUG:   After: (4,-2) facing 3 - Success: True
+DEBUG: Yorktown-1 executing move 2/5: turn_left
+DEBUG:   Before: (4,-2) facing 3
+Turned left (3 pts left)
+DEBUG:   After: (4,-2) facing 2 - Success: True
+DEBUG: Yorktown-1 executing move 3/5: forward
+DEBUG:   Before: (4,-2) facing 2
+DEBUG: Yorktown-1 wants to move FWD from (4,-2) to (3,-1)
+>>> All hexes clear, proceeding with movement
+Moved forward (2 pts left)
+DEBUG:   After: (3,-1) facing 2 - Success: True
+DEBUG: Yorktown-1 executing move 4/5: turn_right
+DEBUG:   Before: (3,-1) facing 2
+Turned right (1 pts left)
+DEBUG:   After: (3,-1) facing 3 - Success: True
+DEBUG: Yorktown-1 executing move 5/5: forward
+DEBUG:   Before: (3,-1) facing 3
+DEBUG: Yorktown-1 wants to move FWD from (3,-1) to (2,-1)
+>>> All hexes clear, proceeding with movement
+Moved forward (0 pts left)
+DEBUG:   After: (2,-1) facing 3 - Success: True
+DEBUG: Yorktown-1 ended at (2,-1) facing 3
+DEBUG: Yorktown-1 completed action in movement phase
+DEBUG: All ships completed movement, advancing phase
+============================================================
+PHASE CHANGE: MOVEMENT → TARGETING
+============================================================
+DEBUG select_target(): Enterprise -> Yorktown-1 as primary
+>>> TARGET SET: Enterprise PRIMARY = Yorktown-1
+Single target auto-assigned (ENTER to continue)
+MOUSE: Left-click at (2493, 806)
+DEBUG: Enterprise completed action in targeting phase
+DEBUG: Next ship is Yorktown-1
+DEBUG: Executing AI targeting for Yorktown-1
+DEBUG select_target(): Yorktown-1 -> Enterprise as primary
+>>> TARGET SET: Yorktown-1 PRIMARY = Enterprise
+DEBUG: Yorktown-1 completed action in targeting phase
+DEBUG: All ships completed targeting, advancing phase
+============================================================
+PHASE CHANGE: TARGETING → FIRING
+============================================================
+============================================================
+FIRING WEAPONS
+============================================================
+Enterprise firing:
+  PRIMARY: Yorktown-1
+  SECONDARY: None
+  TERTIARY: None
+PHASER → PRIMARY: 106 to fore shields
+PHASER → PRIMARY: 106 to fore shields
+PHASER → PRIMARY: 106 to fore shields
+PHASER → PRIMARY: 106 to fore shields
+PHASER → PRIMARY: 106 to fore shields
+PHASER → PRIMARY: 106 to fore shields
+PHASER → PRIMARY: 106 to fore shields
+PHASER → PRIMARY: 106 to fore shields
+AUDIO: play_torpedo_sound called for 'quantum' (normalized='quantum'), mixer_init=(44100, -16, 8)
+AUDIO: Torpedo sound length for 'quantum' = 1.7018367052078247
+AUDIO: Played torpedo sound for 'quantum' on channel <pygame.mixer.Channel object at 0x0000020D987D8310>
+TORPEDO → PRIMARY: 270 shield, 4.500000000000001 hull
+AUDIO: play_torpedo_sound called for 'quantum' (normalized='quantum'), mixer_init=(44100, -16, 8)
+AUDIO: Torpedo sound length for 'quantum' = 1.7018367052078247
+AUDIO: Played torpedo sound for 'quantum' on channel <pygame.mixer.Channel object at 0x0000020D987D9070>
+TORPEDO → PRIMARY: 270 shield, 4.500000000000001 hull
+AUDIO: play_torpedo_sound called for 'quantum' (normalized='quantum'), mixer_init=(44100, -16, 8)
+AUDIO: Torpedo sound length for 'quantum' = 1.7018367052078247
+AUDIO: Played torpedo sound for 'quantum' on channel <pygame.mixer.Channel object at 0x0000020D987DBE30>
+TORPEDO → PRIMARY: 270 shield, 4.500000000000001 hull
+AUDIO: play_torpedo_sound called for 'quantum' (normalized='quantum'), mixer_init=(44100, -16, 8)
+AUDIO: Torpedo sound length for 'quantum' = 1.7018367052078247
+AUDIO: Played torpedo sound for 'quantum' on channel <pygame.mixer.Channel object at 0x0000020D987DBE50>
+TORPEDO → PRIMARY: 270 shield, 4.500000000000001 hull
+DEBUG: Enterprise completed action in firing phase
+DEBUG: Next ship is Yorktown-1
+DEBUG: Executing AI firing for Yorktown-1
+============================================================
+Yorktown-1: AI FIRING TURN
+============================================================
+Target: Enterprise
+--- PRIMARY Enterprise: 5 hexes, hitting FORE shields ---
+PHASER: 90 to fore shields
+PHASER: 90 to fore shields
+PHASER: 90 to fore shields
+PHASER: 90 to fore shields
+PHASER: 90 to fore shields
+PHASER: 90 to fore shields
+PHASER: 90 to fore shields
+PHASER: 90 to fore shields
+AUDIO: play_torpedo_sound called for 'quantum' (normalized='quantum'), mixer_init=(44100, -16, 8)
+AUDIO: Torpedo sound length for 'quantum' = 1.7018367052078247
+AUDIO: Played torpedo sound for 'quantum' (fallback plain play)
+TORPEDO: 229 to fore shields, 3.8250000000000006 hull
+AUDIO: play_torpedo_sound called for 'quantum' (normalized='quantum'), mixer_init=(44100, -16, 8)
+AUDIO: Torpedo sound length for 'quantum' = 1.7018367052078247
+AUDIO: Played torpedo sound for 'quantum' (fallback plain play)
+TORPEDO: 229 to fore shields, 3.8250000000000006 hull
+AUDIO: play_torpedo_sound called for 'quantum' (normalized='quantum'), mixer_init=(44100, -16, 8)
+AUDIO: Torpedo sound length for 'quantum' = 1.7018367052078247
+AUDIO: Played torpedo sound for 'quantum' (fallback plain play)
+TORPEDO: 229 to fore shields, 3.8250000000000006 hull
+AUDIO: play_torpedo_sound called for 'quantum' (normalized='quantum'), mixer_init=(44100, -16, 8)
+AUDIO: Torpedo sound length for 'quantum' = 1.7018367052078247
+AUDIO: Played torpedo sound for 'quantum' (fallback plain play)
+TORPEDO: 229 to fore shields, 3.8250000000000006 hull
+DEBUG: Yorktown-1 completed action in firing phase
+DEBUG: All ships completed firing, advancing phase
+============================================================
+PHASE CHANGE: DAMAGE → POWER
+============================================================
+Enterprise: Allocate power (Available: 600)
+Drag point in triangle to allocate | ENTER: Confirm | ESC: Cancel
+Enterprise: Power allocated (E:100 S:100 W:100) → Balanced
+DEBUG: Enterprise completed action in power phase
+DEBUG: Next ship is Yorktown-1
+DEBUG: Executing AI power allocation for Yorktown-1
+Yorktown-1: Power allocated (E:180 S:150 W:270)
+  Movement: 5 base + 1.6 bonus = 7 MP
+DEBUG: Yorktown-1 completed action in power phase
+DEBUG: All ships completed power, advancing phase
+============================================================
+PHASE CHANGE: POWER → REPAIR
+============================================================
+Enterprise: Repairs available: 2
+Click damaged system to repair | ENTER: Done
+Repairs complete (0/2 used)
+DEBUG: Enterprise completed action in repair phase
+DEBUG: Next ship is Yorktown-1
+DEBUG: Executing AI repairs for Yorktown-1
+Yorktown-1: No repairs needed
+DEBUG: Yorktown-1 completed action in repair phase
+DEBUG: All ships completed repair, advancing phase
+============================================================
+PHASE CHANGE: REPAIR → HOUSEKEEPING
+============================================================
+============================================================
+INITIATIVE PHASE - Rolling for turn order
+============================================================
+Enterprise: Base 75 + Roll 19 = 94
+Yorktown-1: Base 0 + Roll 48 = 48
 Turn order: Enterprise > Yorktown-1
 
 ============================================================

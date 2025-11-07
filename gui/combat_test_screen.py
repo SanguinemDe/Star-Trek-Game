@@ -1538,9 +1538,33 @@ class CombatTestScreen:
                 self.phaser_sound = pygame.mixer.Sound(os.path.join(audio_path, "phaser_audio.mp3"))
                 self.phaser_sound.set_volume(0.3)  # Set to 30% volume so it's not too loud
                 print("✓ Loaded phaser audio")
+                
+                # Load torpedo sounds
+                self.torpedo_sounds = {}
+                torpedo_audio_path = "assets/audio/weapons/torpedoes"
+                for torp_type in torpedo_types:
+                    try:
+                        # Map torpedo types to actual filenames
+                        filename_map = {
+                            'photon': "Photon Torpedoes.mp3",
+                            'quantum': "Quantum Torpedoes.mp3",
+                            'plasma': "Photon Torpedoes.mp3",  # Fallback to photon
+                            'tricobalt': "Photon Torpedoes.mp3",  # Fallback to photon
+                            'tetryon': "Quantum Torpedoes.mp3"  # Fallback to quantum
+                        }
+                        filename = filename_map.get(torp_type, "Photon Torpedoes.mp3")  # Default fallback
+                        self.torpedo_sounds[torp_type] = pygame.mixer.Sound(os.path.join(torpedo_audio_path, filename))
+                        # Set volume - quantum torpedoes might need higher volume
+                        volume = 1.0 if torp_type == 'quantum' else 0.3
+                        self.torpedo_sounds[torp_type].set_volume(volume)
+                        print(f"✓ Loaded {torp_type} torpedo audio (volume: {volume})")
+                    except Exception as audio_error:
+                        print(f"⚠ Could not load {torp_type} audio: {audio_error}")
+                        self.torpedo_sounds[torp_type] = None
             except Exception as audio_error:
                 print(f"⚠ Could not load phaser audio: {audio_error}")
                 self.phaser_sound = None
+                self.torpedo_sounds = {}
             
         except Exception as e:
             print(f"⚠ Could not load weapon effects: {e}")
@@ -1625,6 +1649,147 @@ class CombatTestScreen:
         # Keep last 100 messages for scrolling
         if len(self.combat_log) > 100:
             self.combat_log.pop(0)
+
+    def play_torpedo_sound(self, torpedo_type):
+        """
+        Play a torpedo sound for the given torpedo type.
+
+        Behavior summary:
+        - Accepts torpedo_type strings (case-insensitive) such as 'quantum' or 'photon'.
+        - If the sound is not already loaded in `self.torpedo_sounds`, attempts an on-demand load
+          from `assets/audio/weapons/torpedoes` using the same filename_map as the preloader.
+        - Logs mixer state, load attempts, and playback outcomes via `add_to_log` so the
+          messages are persisted to `combat_log.txt`. Prints are retained for live console
+          visibility during development.
+        - Forces playback onto a mixer channel (creates more channels if necessary) and sets
+          a conservative channel volume for diagnostics. Falls back to `sound.play()` or
+          to `self.phaser_sound` if playback fails.
+
+        Note: Logging is intentionally verbose so we can diagnose platform-specific audio
+        issues without rebuilding the game.
+        """
+
+        # Validate input
+        if not torpedo_type:
+            print("⚠ play_torpedo_sound called with empty torpedo_type")
+            return
+
+        # Normalized key for lookup in torpedo_sounds dict
+        key = str(torpedo_type).lower()
+
+        # Ensure we have a dict to store Sound objects
+        if not hasattr(self, 'torpedo_sounds') or self.torpedo_sounds is None:
+            self.torpedo_sounds = {}
+
+        sound = self.torpedo_sounds.get(key)
+
+        # If the Sound isn't loaded yet, attempt to load it on-demand. This mirrors
+        # the behavior of the loader but allows fallback if preloading failed.
+        if sound is None:
+            try:
+                import os
+                torpedo_audio_path = "assets/audio/weapons/torpedoes"
+                filename_map = {
+                    'photon': "Photon Torpedoes.mp3",
+                    'quantum': "Quantum Torpedoes.mp3",
+                    'plasma': "Photon Torpedoes.mp3",
+                    'tricobalt': "Photon Torpedoes.mp3",
+                    'tetryon': "Quantum Torpedoes.mp3"
+                }
+                filename = filename_map.get(key, "Photon Torpedoes.mp3")
+                filepath = os.path.join(torpedo_audio_path, filename)
+
+                try:
+                    loaded = pygame.mixer.Sound(filepath)
+                    # Choose a reasonable default volume; quantum intentionally louder
+                    vol = 1.0 if key == 'quantum' else 0.3
+                    loaded.set_volume(vol)
+                    self.torpedo_sounds[key] = loaded
+                    sound = loaded
+                    print(f"✓ Loaded torpedo audio on-demand: {filepath} (vol={vol})")
+                    self.add_to_log(f"AUDIO: Loaded on-demand '{filepath}' for key '{key}' (vol={vol})")
+                except Exception as e:
+                    # If loading failed, remember that we tried so we don't repeatedly attempt
+                    # during a tight loop and spam the logs.
+                    self.torpedo_sounds[key] = None
+                    sound = None
+                    print(f"⚠ Failed to load torpedo audio '{filepath}': {e}")
+                    self.add_to_log(f"AUDIO: Failed to load '{filepath}': {e}")
+            except Exception as e:
+                print(f"⚠ Error while attempting to load torpedo audio for '{key}': {e}")
+                self.add_to_log(f"AUDIO: Exception during on-demand load for '{key}': {e}")
+
+        # Record mixer initialization state to the persistent combat log for troubleshooting
+        try:
+            mixer_init = pygame.mixer.get_init()
+            self.add_to_log(f"AUDIO: play_torpedo_sound called for '{torpedo_type}' (normalized='{key}'), mixer_init={mixer_init}")
+        except Exception:
+            # If add_to_log isn't available or mixer query fails, print to console as a fallback
+            print(f"AUDIO: play_torpedo_sound called for '{torpedo_type}' (normalized='{key}')")
+
+        # If we have a valid Sound object, inspect and play it. Otherwise try a fallback.
+        if sound:
+            try:
+                # Check length to detect silent/very-short files (helps diagnose corrupted assets)
+                length = 0
+                try:
+                    length = sound.get_length()
+                except Exception:
+                    # Some platforms may not support get_length(); treat as unknown
+                    length = 0
+
+                self.add_to_log(f"AUDIO: Torpedo sound length for '{key}' = {length}")
+                if length <= 0.05:
+                    self.add_to_log(f"AUDIO: Warning: torpedo sound '{key}' has very short/zero length ({length}s)")
+
+                # Play the sound on a dedicated mixer channel. This avoids immediate
+                # garbage-collection issues and gives us explicit control over channel volume.
+                try:
+                    ch = pygame.mixer.find_channel()
+                    if ch is None:
+                        # Increase channel pool and retry
+                        pygame.mixer.set_num_channels(16)
+                        ch = pygame.mixer.find_channel()
+
+                    # Strong diagnostic volume for quantum (user expects loud feedback)
+                    ch.set_volume(1.0 if key == 'quantum' else 0.6)
+                    ch.play(sound)
+                    self.add_to_log(f"AUDIO: Played torpedo sound for '{key}' on channel {ch}")
+                    print(f"▶ Playing torpedo sound: {key} on channel {ch}")
+                except Exception as e_ch:
+                    # If channel-based playback fails for any reason, fall back to the simple API
+                    try:
+                        sound.play()
+                        self.add_to_log(f"AUDIO: Played torpedo sound for '{key}' (fallback plain play)")
+                        print(f"▶ Playing torpedo sound (fallback): {key}")
+                    except Exception as e2:
+                        # If everything failed, surface the combined error
+                        raise Exception(f"Channel play failed: {e_ch}; fallback play failed: {e2}")
+            except Exception as e:
+                # Any unexpected error during playback - log and try phaser fallback
+                self.add_to_log(f"AUDIO: Could not play torpedo sound for '{key}': {e}")
+                print(f"⚠ Could not play torpedo sound for {key}: {e}")
+
+                if hasattr(self, 'phaser_sound') and self.phaser_sound:
+                    try:
+                        self.phaser_sound.play()
+                        self.add_to_log(f"AUDIO: Fallback - played phaser sound for torpedo '{key}'")
+                        print(f"▶ Fallback: played phaser sound for torpedo {key}")
+                    except Exception as e2:
+                        self.add_to_log(f"AUDIO: Fallback phaser sound failed: {e2}")
+                        print(f"⚠ Fallback phaser sound failed: {e2}")
+        else:
+            # No sound available for this key; attempt to play phaser as a last-resort audible cue
+            self.add_to_log(f"AUDIO: No torpedo sound available for '{key}', attempting fallback")
+            print(f"⚠ No torpedo sound available for '{key}', falling back to phaser sound if present")
+            if hasattr(self, 'phaser_sound') and self.phaser_sound:
+                try:
+                    self.phaser_sound.play()
+                    self.add_to_log(f"AUDIO: Fallback - played phaser sound for missing torpedo '{key}'")
+                    print(f"▶ Fallback: played phaser sound for missing torpedo {key}")
+                except Exception as e:
+                    self.add_to_log(f"AUDIO: Fallback phaser sound failed: {e}")
+                    print(f"⚠ Fallback phaser sound failed: {e}")
     
     # ═══════════════════════════════════════════════════════════════════
     # COMBAT PHASE SYSTEM
@@ -3466,7 +3631,8 @@ class CombatTestScreen:
         if self.torpedo_sprites.get(torpedo.torpedo_type):
             attacker_pos = attacker.position if attacker.position else self.hex_grid.axial_to_pixel(attacker.hex_q, attacker.hex_r)
             target_pos = target.position if target.position else self.hex_grid.axial_to_pixel(target.hex_q, target.hex_r)
-            
+            # Play torpedo sound
+            self.play_torpedo_sound(torpedo.torpedo_type)
             torpedo_effect = TorpedoProjectileEffect(
                 attacker_pos,
                 target_pos,
@@ -3723,7 +3889,8 @@ class CombatTestScreen:
                     # Get ship positions
                     attacker_pos = attacker.position if attacker.position else self.hex_grid.axial_to_pixel(attacker.hex_q, attacker.hex_r)
                     target_pos = target.position if target.position else self.hex_grid.axial_to_pixel(target.hex_q, target.hex_r)
-                    
+                    # Play torpedo sound
+                    self.play_torpedo_sound(torpedo.torpedo_type)
                     # Create torpedo projectile effect
                     torpedo_effect = TorpedoProjectileEffect(
                         attacker_pos,
@@ -4970,6 +5137,32 @@ class CombatTestScreen:
         # Draw the sprite centered
         sprite_rect = ship_sprite.get_rect(center=(sprite_x, sprite_y + 120))
         self.screen.blit(ship_sprite, sprite_rect)
+
+        # Hull damage shading overlay
+        hull_pct = ship.hull / ship.max_hull if ship.max_hull > 0 else 1.0
+        if hull_pct < 1.0:
+            # Calculate overlay color and opacity
+            # 100% hull: no overlay
+            # 75-100%: faint yellow
+            # 50-75%: yellow
+            # 25-50%: orange
+            # 0-25%: red
+            if hull_pct > 0.75:
+                overlay_color = (255, 255, 0)  # yellow
+                alpha = int(60 * (1.0 - hull_pct) / 0.25)  # up to 60
+            elif hull_pct > 0.5:
+                overlay_color = (255, 255, 0)  # yellow
+                alpha = int(120 * (0.75 - hull_pct) / 0.25 + 60)  # up to 180
+            elif hull_pct > 0.25:
+                overlay_color = (255, 140, 0)  # orange
+                alpha = int(120 * (0.5 - hull_pct) / 0.25 + 180)  # up to 300
+            else:
+                overlay_color = (255, 0, 0)  # red
+                alpha = int(100 * (0.25 - hull_pct) / 0.25 + 300)  # up to 400
+            alpha = min(180, max(0, alpha))  # Clamp max alpha for visibility
+            overlay = pygame.Surface(sprite_rect.size, pygame.SRCALPHA)
+            overlay.fill((*overlay_color, alpha))
+            self.screen.blit(overlay, sprite_rect)
         
         # Draw shield brackets around ship
         # Calculate shield health percentages and colors
@@ -4986,70 +5179,87 @@ class CombatTestScreen:
             else:
                 return None  # No shield, don't draw
         
-        bracket_offset = 30
-        bracket_horizontal_length = 50
-        bracket_vertical_length = 120  # Much longer for port/starboard to match ship height
+        bracket_offset = 35
+        bracket_horizontal_length = 60
+        bracket_vertical_length = 130  # Even longer for port/starboard
         bracket_width = 3
+
+        def get_shield_color(current, max_shield):
+            if max_shield == 0:
+                return None
+            pct = (current / max_shield) * 100
+            if pct > 66:
+                return LCARS_COLORS['green']
+            elif pct > 33:
+                return get_warning_color()
+            elif pct > 0:
+                return LCARS_COLORS['alert_red']
+            else:
+                return None  # No shield, don't draw
         
         # Fore shield (top bracket)
         fore_color = get_shield_color(ship.shields['fore'], ship.max_shields['fore'])
+        fore_bracket_top = sprite_rect.top - bracket_offset
+        fore_bracket_mid = fore_bracket_top - 15
         if fore_color:
-            # Top bracket - inverted U shape
-            top_y = sprite_rect.top - bracket_offset
-            pygame.draw.line(self.screen, fore_color, 
-                           (sprite_rect.centerx - bracket_horizontal_length//2, top_y), 
-                           (sprite_rect.centerx - bracket_horizontal_length//2, top_y - 15), bracket_width)
             pygame.draw.line(self.screen, fore_color,
-                           (sprite_rect.centerx - bracket_horizontal_length//2, top_y - 15),
-                           (sprite_rect.centerx + bracket_horizontal_length//2, top_y - 15), bracket_width)
+                (sprite_rect.centerx - bracket_horizontal_length//2, fore_bracket_top),
+                (sprite_rect.centerx - bracket_horizontal_length//2, fore_bracket_mid), bracket_width)
             pygame.draw.line(self.screen, fore_color,
-                           (sprite_rect.centerx + bracket_horizontal_length//2, top_y - 15),
-                           (sprite_rect.centerx + bracket_horizontal_length//2, top_y), bracket_width)
+                (sprite_rect.centerx - bracket_horizontal_length//2, fore_bracket_mid),
+                (sprite_rect.centerx + bracket_horizontal_length//2, fore_bracket_mid), bracket_width)
+            pygame.draw.line(self.screen, fore_color,
+                (sprite_rect.centerx + bracket_horizontal_length//2, fore_bracket_mid),
+                (sprite_rect.centerx + bracket_horizontal_length//2, fore_bracket_top), bracket_width)
         
         # Aft shield (bottom bracket)
         aft_color = get_shield_color(ship.shields['aft'], ship.max_shields['aft'])
+        aft_bracket_bottom = sprite_rect.bottom + bracket_offset
+        aft_bracket_mid = aft_bracket_bottom + 15
         if aft_color:
-            # Bottom bracket - U shape
-            bottom_y = sprite_rect.bottom + bracket_offset
             pygame.draw.line(self.screen, aft_color,
-                           (sprite_rect.centerx - bracket_horizontal_length//2, bottom_y),
-                           (sprite_rect.centerx - bracket_horizontal_length//2, bottom_y + 15), bracket_width)
+                (sprite_rect.centerx - bracket_horizontal_length//2, aft_bracket_bottom),
+                (sprite_rect.centerx - bracket_horizontal_length//2, aft_bracket_mid), bracket_width)
             pygame.draw.line(self.screen, aft_color,
-                           (sprite_rect.centerx - bracket_horizontal_length//2, bottom_y + 15),
-                           (sprite_rect.centerx + bracket_horizontal_length//2, bottom_y + 15), bracket_width)
+                (sprite_rect.centerx - bracket_horizontal_length//2, aft_bracket_mid),
+                (sprite_rect.centerx + bracket_horizontal_length//2, aft_bracket_mid), bracket_width)
             pygame.draw.line(self.screen, aft_color,
-                           (sprite_rect.centerx + bracket_horizontal_length//2, bottom_y + 15),
-                           (sprite_rect.centerx + bracket_horizontal_length//2, bottom_y), bracket_width)
+                (sprite_rect.centerx + bracket_horizontal_length//2, aft_bracket_mid),
+                (sprite_rect.centerx + bracket_horizontal_length//2, aft_bracket_bottom), bracket_width)
         
         # Port shield (left bracket) - LONGER to match ship height
         port_color = get_shield_color(ship.shields['port'], ship.max_shields['port'])
+        port_bracket_left = sprite_rect.left - bracket_offset
+        port_bracket_inner = port_bracket_left - 15
+        port_bracket_top = sprite_rect.centery - bracket_vertical_length//2
+        port_bracket_bottom = sprite_rect.centery + bracket_vertical_length//2
         if port_color:
-            # Left bracket - [ shape
-            left_x = sprite_rect.left - bracket_offset
             pygame.draw.line(self.screen, port_color,
-                           (left_x, sprite_rect.centery - bracket_vertical_length//2),
-                           (left_x - 15, sprite_rect.centery - bracket_vertical_length//2), bracket_width)
+                (port_bracket_left, port_bracket_top),
+                (port_bracket_inner, port_bracket_top), bracket_width)
             pygame.draw.line(self.screen, port_color,
-                           (left_x - 15, sprite_rect.centery - bracket_vertical_length//2),
-                           (left_x - 15, sprite_rect.centery + bracket_vertical_length//2), bracket_width)
+                (port_bracket_inner, port_bracket_top),
+                (port_bracket_inner, port_bracket_bottom), bracket_width)
             pygame.draw.line(self.screen, port_color,
-                           (left_x - 15, sprite_rect.centery + bracket_vertical_length//2),
-                           (left_x, sprite_rect.centery + bracket_vertical_length//2), bracket_width)
+                (port_bracket_inner, port_bracket_bottom),
+                (port_bracket_left, port_bracket_bottom), bracket_width)
         
         # Starboard shield (right bracket) - LONGER to match ship height
         starboard_color = get_shield_color(ship.shields['starboard'], ship.max_shields['starboard'])
+        starboard_bracket_right = sprite_rect.right + bracket_offset
+        starboard_bracket_inner = starboard_bracket_right + 15
+        starboard_bracket_top = sprite_rect.centery - bracket_vertical_length//2
+        starboard_bracket_bottom = sprite_rect.centery + bracket_vertical_length//2
         if starboard_color:
-            # Right bracket - ] shape
-            right_x = sprite_rect.right + bracket_offset
             pygame.draw.line(self.screen, starboard_color,
-                           (right_x, sprite_rect.centery - bracket_vertical_length//2),
-                           (right_x + 15, sprite_rect.centery - bracket_vertical_length//2), bracket_width)
+                (starboard_bracket_right, starboard_bracket_top),
+                (starboard_bracket_inner, starboard_bracket_top), bracket_width)
             pygame.draw.line(self.screen, starboard_color,
-                           (right_x + 15, sprite_rect.centery - bracket_vertical_length//2),
-                           (right_x + 15, sprite_rect.centery + bracket_vertical_length//2), bracket_width)
+                (starboard_bracket_inner, starboard_bracket_top),
+                (starboard_bracket_inner, starboard_bracket_bottom), bracket_width)
             pygame.draw.line(self.screen, starboard_color,
-                           (right_x + 15, sprite_rect.centery + bracket_vertical_length//2),
-                           (right_x, sprite_rect.centery + bracket_vertical_length//2), bracket_width)
+                (starboard_bracket_inner, starboard_bracket_bottom),
+                (starboard_bracket_right, starboard_bracket_bottom), bracket_width)
         
         # Draw weapon placement indicators on the sprite
         # Count weapons per arc
@@ -5060,82 +5270,7 @@ class CombatTestScreen:
         fore_torpedoes = sum(1 for t in ship.torpedo_bays if 'fore' in t.firing_arcs)
         aft_torpedoes = sum(1 for t in ship.torpedo_bays if 'aft' in t.firing_arcs)
         
-        # Draw weapon icons INSIDE shield brackets, centered and organized
-        # Larger, better organized icons
-        phaser_icon_size = 6
-        torpedo_icon_size = 8
-        sprite_width = ship_sprite.get_width()
-        sprite_height = ship_sprite.get_height()
-        
-        # Fore weapons - inside top bracket, centered horizontally
-        fore_bracket_center_y = sprite_rect.top - bracket_offset - 7  # Center of top bracket
-        
-        if fore_phasers > 0:
-            # Phasers on top row inside bracket
-            total_width = min(fore_phasers, 6) * 12
-            start_x = sprite_rect.centerx - total_width // 2
-            for i in range(min(fore_phasers, 6)):
-                wx = start_x + (i * 12)
-                wy = fore_bracket_center_y + 12  # Lower row
-                pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), phaser_icon_size)
-        
-        if fore_torpedoes > 0:
-            # Torpedoes on bottom row inside bracket
-            total_width = min(fore_torpedoes, 3) * 18
-            start_x = sprite_rect.centerx - total_width // 2
-            for i in range(min(fore_torpedoes, 3)):
-                wx = start_x + (i * 18)
-                wy = fore_bracket_center_y - 8  # Upper row
-                points = [(wx, wy - torpedo_icon_size), (wx - torpedo_icon_size//2, wy + torpedo_icon_size//2), 
-                         (wx + torpedo_icon_size//2, wy + torpedo_icon_size//2)]
-                pygame.draw.polygon(self.screen, LCARS_COLORS['orange'], points)
-        
-        # Aft weapons - inside bottom bracket, centered horizontally
-        aft_bracket_center_y = sprite_rect.bottom + bracket_offset + 7  # Center of bottom bracket
-        
-        if aft_phasers > 0:
-            # Phasers on bottom row inside bracket
-            total_width = min(aft_phasers, 4) * 12
-            start_x = sprite_rect.centerx - total_width // 2
-            for i in range(min(aft_phasers, 4)):
-                wx = start_x + (i * 12)
-                wy = aft_bracket_center_y - 12  # Upper row
-                pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), phaser_icon_size)
-        
-        if aft_torpedoes > 0:
-            # Torpedoes on top row inside bracket
-            total_width = min(aft_torpedoes, 2) * 18
-            start_x = sprite_rect.centerx - total_width // 2
-            for i in range(min(aft_torpedoes, 2)):
-                wx = start_x + (i * 18)
-                wy = aft_bracket_center_y + 8  # Lower row
-                points = [(wx, wy + torpedo_icon_size), (wx - torpedo_icon_size//2, wy - torpedo_icon_size//2),
-                         (wx + torpedo_icon_size//2, wy - torpedo_icon_size//2)]
-                pygame.draw.polygon(self.screen, LCARS_COLORS['orange'], points)
-        
-        # Port weapons - inside left bracket, centered vertically
-        port_bracket_center_x = sprite_rect.left - bracket_offset - 7  # Center of left bracket
-        
-        if port_phasers > 0:
-            # Phasers stacked vertically inside bracket
-            total_height = min(port_phasers, 4) * 15
-            start_y = sprite_rect.centery - total_height // 2
-            for i in range(min(port_phasers, 4)):
-                wx = port_bracket_center_x
-                wy = start_y + (i * 15)
-                pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), phaser_icon_size)
-        
-        # Starboard weapons - inside right bracket, centered vertically
-        starboard_bracket_center_x = sprite_rect.right + bracket_offset + 7  # Center of right bracket
-        
-        if starboard_phasers > 0:
-            # Phasers stacked vertically inside bracket
-            total_height = min(starboard_phasers, 4) * 15
-            start_y = sprite_rect.centery - total_height // 2
-            for i in range(min(starboard_phasers, 4)):
-                wx = starboard_bracket_center_x
-                wy = start_y + (i * 15)
-                pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), phaser_icon_size)
+        # Weapon icons removed for now
         
         y = sprite_rect.bottom + 90  # More space due to larger sprite and weapon icons
         
