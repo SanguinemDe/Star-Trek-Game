@@ -4988,7 +4988,7 @@ class CombatTestScreen:
         
         bracket_offset = 30
         bracket_horizontal_length = 50
-        bracket_vertical_length = 80  # Longer for port/starboard to match ship height
+        bracket_vertical_length = 120  # Much longer for port/starboard to match ship height
         bracket_width = 3
         
         # Fore shield (top bracket)
@@ -5060,74 +5060,80 @@ class CombatTestScreen:
         fore_torpedoes = sum(1 for t in ship.torpedo_bays if 'fore' in t.firing_arcs)
         aft_torpedoes = sum(1 for t in ship.torpedo_bays if 'aft' in t.firing_arcs)
         
-        # Draw weapon icons around the sprite (now pointing UP)
+        # Draw weapon icons INSIDE shield brackets, centered and organized
         # Larger, better organized icons
         phaser_icon_size = 6
         torpedo_icon_size = 8
         sprite_width = ship_sprite.get_width()
         sprite_height = ship_sprite.get_height()
         
-        # Fore weapons (top of sprite since now pointing up)
-        weapon_spacing = 50  # Space between phasers and torpedoes
+        # Fore weapons - inside top bracket, centered horizontally
+        fore_bracket_center_y = sprite_rect.top - bracket_offset - 7  # Center of top bracket
         
         if fore_phasers > 0:
-            # Center the phasers above the ship
+            # Phasers on top row inside bracket
             total_width = min(fore_phasers, 6) * 12
             start_x = sprite_rect.centerx - total_width // 2
             for i in range(min(fore_phasers, 6)):
                 wx = start_x + (i * 12)
-                wy = sprite_rect.top - weapon_spacing - 5
+                wy = fore_bracket_center_y + 12  # Lower row
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), phaser_icon_size)
         
         if fore_torpedoes > 0:
-            # Center the torpedoes above the phasers
+            # Torpedoes on bottom row inside bracket
             total_width = min(fore_torpedoes, 3) * 18
             start_x = sprite_rect.centerx - total_width // 2
             for i in range(min(fore_torpedoes, 3)):
                 wx = start_x + (i * 18)
-                wy = sprite_rect.top - weapon_spacing - 20
+                wy = fore_bracket_center_y - 8  # Upper row
                 points = [(wx, wy - torpedo_icon_size), (wx - torpedo_icon_size//2, wy + torpedo_icon_size//2), 
                          (wx + torpedo_icon_size//2, wy + torpedo_icon_size//2)]
                 pygame.draw.polygon(self.screen, LCARS_COLORS['orange'], points)
         
-        # Aft weapons (bottom of sprite)
+        # Aft weapons - inside bottom bracket, centered horizontally
+        aft_bracket_center_y = sprite_rect.bottom + bracket_offset + 7  # Center of bottom bracket
+        
         if aft_phasers > 0:
-            # Center the phasers below the ship
+            # Phasers on bottom row inside bracket
             total_width = min(aft_phasers, 4) * 12
             start_x = sprite_rect.centerx - total_width // 2
             for i in range(min(aft_phasers, 4)):
                 wx = start_x + (i * 12)
-                wy = sprite_rect.bottom + weapon_spacing + 5
+                wy = aft_bracket_center_y - 12  # Upper row
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), phaser_icon_size)
         
         if aft_torpedoes > 0:
-            # Center the torpedoes below the phasers
+            # Torpedoes on top row inside bracket
             total_width = min(aft_torpedoes, 2) * 18
             start_x = sprite_rect.centerx - total_width // 2
             for i in range(min(aft_torpedoes, 2)):
                 wx = start_x + (i * 18)
-                wy = sprite_rect.bottom + weapon_spacing + 20
+                wy = aft_bracket_center_y + 8  # Lower row
                 points = [(wx, wy + torpedo_icon_size), (wx - torpedo_icon_size//2, wy - torpedo_icon_size//2),
                          (wx + torpedo_icon_size//2, wy - torpedo_icon_size//2)]
                 pygame.draw.polygon(self.screen, LCARS_COLORS['orange'], points)
         
-        # Port weapons (left side)
+        # Port weapons - inside left bracket, centered vertically
+        port_bracket_center_x = sprite_rect.left - bracket_offset - 7  # Center of left bracket
+        
         if port_phasers > 0:
-            # Center the phasers vertically on left side
+            # Phasers stacked vertically inside bracket
             total_height = min(port_phasers, 4) * 15
             start_y = sprite_rect.centery - total_height // 2
             for i in range(min(port_phasers, 4)):
-                wx = sprite_rect.left - weapon_spacing
+                wx = port_bracket_center_x
                 wy = start_y + (i * 15)
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), phaser_icon_size)
         
-        # Starboard weapons (right side)
+        # Starboard weapons - inside right bracket, centered vertically
+        starboard_bracket_center_x = sprite_rect.right + bracket_offset + 7  # Center of right bracket
+        
         if starboard_phasers > 0:
-            # Center the phasers vertically on right side
+            # Phasers stacked vertically inside bracket
             total_height = min(starboard_phasers, 4) * 15
             start_y = sprite_rect.centery - total_height // 2
             for i in range(min(starboard_phasers, 4)):
-                wx = sprite_rect.right + weapon_spacing
+                wx = starboard_bracket_center_x
                 wy = start_y + (i * 15)
                 pygame.draw.circle(self.screen, LCARS_COLORS['alert_red'], (wx, wy), phaser_icon_size)
         

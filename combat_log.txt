@@ -15,8 +15,8 @@ Combat ready - press SPACE to fire, ENTER to advance
 ============================================================
 INITIATIVE PHASE - Rolling for turn order
 ============================================================
-Enterprise: Base 75 + Roll 70 = 145
-Yorktown-1: Base 0 + Roll 9 = 9
+Enterprise: Base 75 + Roll 85 = 160
+Yorktown-1: Base 0 + Roll 58 = 58
 Turn order: Enterprise > Yorktown-1
 
 ============================================================
